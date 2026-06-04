@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
+import 'screens/dashboard/dashboard_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -8,7 +12,7 @@ void main() async {
   await Supabase.initialize(
     url: 'https://lscrtjygvlamygonwihn.supabase.co',
     anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A', // <-- Ganti dengan Anon Key asli dari WhatsApp
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A',
   );
 
   runApp(const MyApp());
@@ -21,67 +25,82 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Tes Koneksi KosKu',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const CekKoneksiScreen(),
+      title: 'KosKu Gateway',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF004D40), // Diselaraskan dengan warna dasar gelap kehijauan
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const GerbangUtamaScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
+      },
     );
   }
 }
 
-class CekKoneksiScreen extends StatelessWidget {
-  const CekKoneksiScreen({super.key});
+class GerbangUtamaScreen extends StatelessWidget {
+  const GerbangUtamaScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // <-- Sudah diperbaiki dari app_appbar ke appBar
-        title: const Text('🔌 Tes Koneksi Supabase'),
-        centerTitle: true,
-      ),
+      // Menggunakan background gelap kehijauan khas splash screen kelompok kalian
+      backgroundColor: const Color(0xFF004D40),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: Supabase.instance.client
             .from('kamar')
             .stream(primaryKey: ['id_kamar']),
         builder: (context, snapshot) {
+          // 1. KONDISI LOADING: Saat mengecek koneksi awal
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 15),
-                  Text('Sedang menghubungkan ke server Supabase...'),
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 20),
+                  Text(
+                    'Menghubungkan ke server KosKu...',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
                 ],
               ),
             );
           }
 
+          // 2. KONDISI ERROR: Koneksi internet putus / database bermasalah
           if (snapshot.hasError) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(
-                  20.0,
-                ), // <-- Parameter align yang salah sudah dihapus
+                padding: const EdgeInsets.all(30.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.gpp_bad, color: Colors.red, size: 60),
-                    const SizedBox(height: 10),
+                    const Icon(
+                      Icons.gpp_bad,
+                      color: Colors.redAccent,
+                      size: 70,
+                    ),
+                    const SizedBox(height: 15),
                     const Text(
-                      'KONEKSI GAGAL!',
+                      'KONEKSI KE SERVER GAGAL',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.red,
+                        color: Colors.redAccent,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '${snapshot.error}',
-                      style: const TextStyle(color: Colors.grey),
-                      textAlign:
-                          TextAlign.center, // Perataan tengah ditaruh di sini
+                      'Harap periksa koneksi internet kelompok kalian.\nError: ${snapshot.error}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ), // Sudah diperbaiki dari whiteAA ke white70
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -89,94 +108,133 @@ class CekKoneksiScreen extends StatelessWidget {
             );
           }
 
-          final dataKamar = snapshot.data ?? [];
-          if (dataKamar.isEmpty) {
-            return const Center(
+          // 3. KONDISI SUKSES: Terhubung dengan database cloud (Tabel isi ataupun kosong)
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 32.0,
+              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.cloud_done, color: Colors.green, size: 60),
-                  SizedBox(height: 10),
-                  Text(
-                    'KONEKSI SUKSES!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                  // --- Bagian Atas: Status Indikator Validasi Jaringan ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(
+                        alpha: 0.2,
+                      ), // Sudah diperbaiki menggunakan dengan .withValues
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.greenAccent),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Supabase Cloud Connected & Realtime Active',
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 10),
-                  Text('Tabel "kamar" terbaca, tapi isinya masih kosong.'),
+
+                  // --- Bagian Tengah: Identitas & Logo Aplikasi (Sesuai Mockup) ---
+                  Column(
+                    children: [
+                      // Tempat menaruh logo icon_kosku.jpeg nantinya
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(
+                          Icons.home_work,
+                          size: 65,
+                          color: Color(0xFF004D40),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'KosKu',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const Text(
+                        'Kelola Kos Lebih Mudah',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // --- Bagian Bawah: Tombol Gerbang Masuk Aplikasi ---
+                  Column(
+                    // <-- Properti width: double.infinity yang salah sudah dihapus dari sini
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.white, // Tombol kontras putih
+                            foregroundColor: const Color(0xFF004D40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 2,
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pushNamed('/login');
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Masuk ke Aplikasi',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Tugas Pemrograman Mobile - Kelompok KosKu',
+                        style: TextStyle(color: Colors.white38, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            );
-          }
-
-          return Column(
-            children: [
-              Container(
-                width: double.infinity,
-                color: Colors.green.shade100,
-                padding: const EdgeInsets.all(12),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text(
-                      'Koneksi Berhasil & Data Sinkron!',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: dataKamar.length,
-                  itemBuilder: (context, index) {
-                    final kamar = dataKamar[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.bed, color: Colors.blue),
-                        title: Text(
-                          'Kamar No: ${kamar['nomor_kamar']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          'Harga: Rp ${kamar['harga_sewa_dasar']}',
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: kamar['status_kamar'] == 'Kosong'
-                                ? Colors.green.shade400
-                                : Colors.orange.shade400,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${kamar['status_kamar']}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
