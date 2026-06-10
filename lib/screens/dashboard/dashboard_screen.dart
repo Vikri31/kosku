@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../kamar/kamar_list_screen.dart';
+import '../buku_kas/buku_kas_screen.dart';
 
 
 class DashboardScreen extends StatefulWidget {
@@ -88,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _buildBeranda(context, primaryColor),
       const KamarListScreen(),
       _buildPlaceholderScreen('Transaksi', Icons.swap_horiz_outlined, primaryColor),
-      _buildPlaceholderScreen('Buku', Icons.menu_book_outlined, primaryColor),
+      const BukuKasScreen(),
       _buildPlaceholderScreen('Profil', Icons.person_outline, primaryColor),
     ];
 
