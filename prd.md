@@ -112,11 +112,12 @@
 
 ## 5. Active Supabase Database Schema Reference
 ```sql
--- Skema database produksi yang aktif terhubung di backend:
--- 1. kamar (id_kamar, nomor_kamar, harga_sewa_dasar, status_kamar)
+-- Skema database produksi yang aktif terhubung di backend (SINKRON DATA UI V3):
+-- 1. kamar (id_kamar, nomor_kamar, harga_sewa_dasar, status_kamar, fasilitas text[], foto_kamar text[])
 -- 2. detail_penyewa (nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat_ktp, pekerjaan)
 -- 3. penyewa (id_penyewa, nik, nomor_whatsapp, nama_lengkap)
 -- 4. sewa (id_sewa, id_kamar, id_penyewa, tanggal_masuk, durasi_bulan, status_sewa)
 -- 5. invoice (id_invoice, id_sewa, nomor_invoice, tanggal_dibuat, tanggal_jatuh_tempo, total_tagihan, status_pembayaran)
--- 6. pemasukan (id_pemasukan, id_invoice, tanggal_bayar, nominal_masuk, metode_bayar)
+-- 6. pemasukan (id_pemasukan, id_invoice, tanggal_bayar, nominal_masuk, metode_bayar, catatan)
 -- 7. pengeluaran (id_pengeluaran, kategori, deskripsi, tanggal_keluar, nominal_keluar)
+-- 8. profil_admin (id_admin uuid, nama_lengkap, nama_kost)
