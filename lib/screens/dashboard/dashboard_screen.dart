@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../kamar/kamar_list_screen.dart';
 import '../buku_kas/buku_kas_screen.dart';
 import '../profile/profile_screen.dart';
+import '../transaksi/daftar_transaksi.dart';
 
 
 class DashboardScreen extends StatefulWidget {
@@ -89,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> screens = [
       _buildBeranda(context, primaryColor),
       const KamarListScreen(),
-      _buildPlaceholderScreen('Transaksi', Icons.swap_horiz_outlined, primaryColor),
+      const DaftarTransaksiScreen(),
       const BukuKasScreen(),
       const ProfileScreen(),
     ];
@@ -651,37 +652,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Placeholder Screen Builder for other tabs
-  Widget _buildPlaceholderScreen(String title, IconData icon, Color primaryColor) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: primaryColor,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 80, color: primaryColor.withValues(alpha: 0.4)),
-            const SizedBox(height: 16),
-            Text(
-              'Halaman $title',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Modul ini dalam tahap pengembangan.',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
