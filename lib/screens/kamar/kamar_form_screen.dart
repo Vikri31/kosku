@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:path/path.dart' as path;
 
 class KamarFormScreen extends StatefulWidget {
   final Map<String, dynamic>? roomData;
@@ -16,6 +21,8 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
   final _hargaSewaController = TextEditingController();
   String _statusKamar = 'Kosong';
   bool _isLoading = false;
+  List<String> _fotoKamarUrls = [];
+  bool _isCompressingOrUploading = false;
 
   // Mock states for Facilities
   final Map<String, bool> _facilities = {
@@ -34,6 +41,23 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
       _nomorKamarController.text = widget.roomData!['nomor_kamar']?.toString() ?? '';
       _hargaSewaController.text = widget.roomData!['harga_sewa_dasar']?.toString() ?? '';
       _statusKamar = widget.roomData!['status_kamar'] ?? 'Kosong';
+      
+      // Load existing photo URLs if any
+      final existingPhotos = widget.roomData!['foto_kamar'];
+      if (existingPhotos != null) {
+        _fotoKamarUrls = List<String>.from(existingPhotos);
+      }
+
+      // Load existing facilities if any
+      final existingFacilities = widget.roomData!['fasilitas'];
+      if (existingFacilities != null) {
+        final List<String> list = List<String>.from(existingFacilities);
+        for (var item in list) {
+          if (_facilities.containsKey(item)) {
+            _facilities[item] = true;
+          }
+        }
+      }
     }
   }
 
@@ -42,6 +66,142 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
     _nomorKamarController.dispose();
     _hargaSewaController.dispose();
     super.dispose();
+  }
+
+  Future<File?> _compressImage(File file) async {
+    try {
+      final tempDir = await path_provider.getTemporaryDirectory();
+      final String targetPath = path.join(
+        tempDir.path,
+        'compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
+      final XFile? result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: 75,
+        minWidth: 1080,
+        minHeight: 1080,
+        format: CompressFormat.jpeg,
+      );
+
+      if (result == null) return null;
+      return File(result.path);
+    } catch (e) {
+      debugPrint('Error compressing image: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _uploadImage(File file) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final fileExtension = path.extension(file.path);
+      final String uniqueFileName = 'room_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExtension';
+      final String uploadPath = 'uploads/$uniqueFileName';
+
+      await supabase.storage.from('foto_kamar').upload(uploadPath, file);
+      
+      final String publicUrl = supabase.storage.from('foto_kamar').getPublicUrl(uploadPath);
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Pilih Sumber Foto',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF004D40),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF004D40)),
+              title: const Text('Kamera'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF004D40)),
+              title: const Text('Galeri'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(source: source);
+    if (pickedFile == null) return;
+
+    // Validate file extension
+    final extension = path.extension(pickedFile.path).toLowerCase();
+    if (extension != '.jpg' && extension != '.jpeg' && extension != '.png') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hanya format JPG, JPEG, dan PNG yang diperbolehkan.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isCompressingOrUploading = true;
+    });
+
+    try {
+      final File rawFile = File(pickedFile.path);
+      final File? compressedFile = await _compressImage(rawFile);
+      if (compressedFile == null) {
+        throw Exception('Gagal mengompresi gambar');
+      }
+
+      final String? publicUrl = await _uploadImage(compressedFile);
+      if (publicUrl == null) {
+        throw Exception('Gagal mengunggah gambar');
+      }
+
+      setState(() {
+        _fotoKamarUrls.add(publicUrl);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Proses gagal: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCompressingOrUploading = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleSave() async {
@@ -55,10 +215,17 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
       final nomorKamar = _nomorKamarController.text.trim();
       final hargaSewa = int.parse(_hargaSewaController.text.trim());
 
+      final selectedFacilities = _facilities.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
       final Map<String, dynamic> payload = {
         'nomor_kamar': nomorKamar,
         'harga_sewa_dasar': hargaSewa,
         'status_kamar': _statusKamar,
+        'fasilitas': selectedFacilities,
+        'foto_kamar': _fotoKamarUrls,
       };
 
       // If editing, include the Primary Key to perform an UPDATE upsert
@@ -400,35 +567,140 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.grey[300]!,
-                            width: 1,
-                            style: BorderStyle.solid, // Use a simple solid border
+                      if (_fotoKamarUrls.isEmpty && !_isCompressingOrUploading)
+                        GestureDetector(
+                          onTap: _pickAndUploadImage,
+                          child: Container(
+                            width: double.infinity,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.grey[300]!,
+                                width: 1,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.grey[400]),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Ketuk untuk mengunggah foto',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Maksimal 5 foto (JPG, PNG)',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        )
+                      else
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.grey[400]),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Ketuk untuk mengunggah foto',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Maksimal 5 foto (JPG, PNG)',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                            ),
+                            ..._fotoKamarUrls.map((url) {
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.grey[200]!),
+                                      image: DecorationImage(
+                                        image: NetworkImage(url),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -6,
+                                    right: -6,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _fotoKamarUrls.remove(url);
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                            if (_isCompressingOrUploading)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8F9FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (_fotoKamarUrls.length < 5 && !_isCompressingOrUploading)
+                              GestureDetector(
+                                onTap: _pickAndUploadImage,
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FA),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_a_photo_outlined, size: 24, color: Colors.grey[400]),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Tambah',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      ),
                     ],
                   ),
                 ),

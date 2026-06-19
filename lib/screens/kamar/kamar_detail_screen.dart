@@ -31,6 +31,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   Map<String, dynamic>? _penyewaData;
   List<Map<String, dynamic>> _historiPembayaran = [];
   bool _isLoading = true;
+  int _currentImageIndex = 0;
 
   @override
   void initState() {
@@ -235,16 +236,36 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                     background: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
-                          isTerisi
-                              ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600'
-                              : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: primaryColor.withValues(alpha: 0.3),
-                            child: const Icon(Icons.bed_outlined, size: 60, color: Colors.white54),
-                          ),
-                        ),
+                        ((_kamarData?['foto_kamar'] as List?)?.isEmpty ?? true)
+                            ? Image.network(
+                                isTerisi
+                                    ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600'
+                                    : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  color: primaryColor.withValues(alpha: 0.3),
+                                  child: const Icon(Icons.bed_outlined, size: 60, color: Colors.white54),
+                                ),
+                              )
+                            : PageView.builder(
+                                itemCount: (_kamarData!['foto_kamar'] as List).length,
+                                onPageChanged: (index) {
+                                  setState(() {
+                                    _currentImageIndex = index;
+                                  });
+                                },
+                                itemBuilder: (context, index) {
+                                  final url = (_kamarData!['foto_kamar'] as List)[index] as String;
+                                  return Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: primaryColor.withValues(alpha: 0.3),
+                                      child: const Icon(Icons.broken_image_outlined, size: 60, color: Colors.white54),
+                                    ),
+                                  );
+                                },
+                              ),
                         // Gradient overlay
                         Container(
                           decoration: BoxDecoration(
@@ -259,23 +280,29 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                           ),
                         ),
                         // Page indicator dots
-                        Positioned(
-                          bottom: 12,
-                          left: 0,
-                          right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(3, (i) => Container(
-                              width: i == 0 ? 20 : 8,
-                              height: 8,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              decoration: BoxDecoration(
-                                color: i == 0 ? primaryColor : Colors.white.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(4),
+                        if (_kamarData != null &&
+                            _kamarData!['foto_kamar'] != null &&
+                            (_kamarData!['foto_kamar'] as List).length > 1)
+                          Positioned(
+                            bottom: 12,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                (_kamarData!['foto_kamar'] as List).length,
+                                (i) => Container(
+                                  width: _currentImageIndex == i ? 20 : 8,
+                                  height: 8,
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    color: _currentImageIndex == i ? primaryColor : Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
                               ),
-                            )),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -360,13 +387,44 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                         const SizedBox(height: 16),
 
                         // --- FASILITAS CHIPS ---
-                        Wrap(
-                          spacing: 12,
-                          children: [
-                            _buildFasilitasChip(Icons.wifi_rounded, 'WiFi'),
-                            _buildFasilitasChip(Icons.ac_unit_outlined, 'AC'),
-                            _buildFasilitasChip(Icons.bathtub_outlined, 'K. Mandi Dalam'),
-                          ],
+                        Builder(
+                          builder: (context) {
+                            final List<dynamic> fasilitas = _kamarData?['fasilitas'] as List<dynamic>? ?? [];
+                            if (fasilitas.isEmpty) {
+                              return Text(
+                                'Tidak ada fasilitas khusus',
+                                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                              );
+                            }
+                            
+                            IconData getFacilityIcon(String name) {
+                              switch (name) {
+                                case 'Kasur':
+                                  return Icons.king_bed_outlined;
+                                case 'AC':
+                                  return Icons.ac_unit_outlined;
+                                case 'KM Dalam':
+                                  return Icons.bathtub_outlined;
+                                case 'WiFi':
+                                  return Icons.wifi_rounded;
+                                case 'Meja Belajar':
+                                  return Icons.table_restaurant_outlined;
+                                case 'Lemari':
+                                  return Icons.checkroom_outlined;
+                                default:
+                                  return Icons.star_border;
+                              }
+                            }
+
+                            return Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              children: fasilitas.map((f) {
+                                final name = f.toString();
+                                return _buildFasilitasChip(getFacilityIcon(name), name);
+                              }).toList(),
+                            );
+                          },
                         ),
                         const SizedBox(height: 24),
 

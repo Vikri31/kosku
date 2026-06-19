@@ -33,8 +33,8 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController();
-  final _waController = TextEditingController();   // nomor_whatsapp
-  final _nikController = TextEditingController();  // nik
+  final _waController = TextEditingController(); // nomor_whatsapp
+  final _nikController = TextEditingController(); // nik
 
   DateTime? _tanggalMasuk;
   int _durasibulan = 1;
@@ -51,8 +51,8 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     super.initState();
     if (_isEditMode) {
       _namaController.text = widget.penyewaData?['nama_lengkap'] ?? '';
-      _waController.text   = widget.penyewaData?['nomor_whatsapp'] ?? '';
-      _nikController.text  = widget.penyewaData?['nik'] ?? '';
+      _waController.text = widget.penyewaData?['nomor_whatsapp'] ?? '';
+      _nikController.text = widget.penyewaData?['nik'] ?? '';
 
       final tanggalStr = widget.sewaData?['tanggal_masuk'];
       if (tanggalStr != null) {
@@ -102,8 +102,19 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
 
   String _formatDate(DateTime date) {
     const months = [
-      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      '',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     return '${date.day} ${months[date.month]} ${date.year}';
   }
@@ -143,47 +154,72 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     setState(() => _isLoading = true);
     try {
       final client = Supabase.instance.client;
-      final nama  = _namaController.text.trim();
-      final wa    = _waController.text.trim();
-      final nik   = _nikController.text.trim();
+      final nama = _namaController.text.trim();
+      final wa = _waController.text.trim();
+      final nik = _nikController.text.trim();
       final tglMasuk = _tanggalMasuk!.toIso8601String().split('T').first;
 
       if (_isEditMode) {
-        // ── UPDATE penyewa ──
-        final penyewaId = widget.penyewaData!['id_penyewa'];
-        await client.from('penyewa').update({
-          'nama_lengkap'   : nama,
-          'nomor_whatsapp' : wa,
-          'nik'            : nik,
-        }).eq('id_penyewa', penyewaId);
+        // ── 1. UPDATE detail_penyewa terlebih dahulu ──
+        await client
+            .from('detail_penyewa')
+            .update({
+              'tempat_lahir': '-',
+              'tanggal_lahir': '2000-01-01',
+              'jenis_kelamin': '-',
+              'alamat_ktp': '-',
+              'pekerjaan': '-',
+            })
+            .eq('nik', widget.penyewaData!['nik']);
 
-        // ── UPDATE sewa ──
+        // ── 2. UPDATE penyewa ──
+        final penyewaId = widget.penyewaData!['id_penyewa'];
+        await client
+            .from('penyewa')
+            .update({'nama_lengkap': nama, 'nomor_whatsapp': wa, 'nik': nik})
+            .eq('id_penyewa', penyewaId);
+
+        // ── 3. UPDATE sewa ──
         final sewaId = widget.sewaData!['id_sewa'];
-        await client.from('sewa').update({
-          'id_kamar'      : _selectedKamarId,
-          'tanggal_masuk' : tglMasuk,
-          'durasi_bulan'  : _durasibulan,
-        }).eq('id_sewa', sewaId);
+        await client
+            .from('sewa')
+            .update({
+              'id_kamar': _selectedKamarId,
+              'tanggal_masuk': tglMasuk,
+              'durasi_bulan': _durasibulan,
+            })
+            .eq('id_sewa', sewaId);
       } else {
-        // ── INSERT penyewa baru ──
-        final penyewaRes = await client.from('penyewa').insert({
-          'nama_lengkap'   : nama,
-          'nomor_whatsapp' : wa,
-          'nik'            : nik,
-        }).select().single();
+        // ── 1. WAJIB INSERT KE detail_penyewa DULUAN AGAR NIK TERDAFTAR ──
+        await client.from('detail_penyewa').insert({
+          'nik': nik,
+          'tempat_lahir':
+              '-', // Mengisi fallback data dummy agar tidak kena error NOT NULL
+          'tanggal_lahir': '2000-01-01',
+          'jenis_kelamin': '-',
+          'alamat_ktp': '-',
+          'pekerjaan': '-',
+        });
+
+        // ── 2. BARU INSERT KE TABEL penyewa (Sudah aman karena NIK sudah lolos validasi FK) ──
+        final penyewaRes = await client
+            .from('penyewa')
+            .insert({'nama_lengkap': nama, 'nomor_whatsapp': wa, 'nik': nik})
+            .select()
+            .single();
 
         final penyewaId = penyewaRes['id_penyewa'];
 
-        // ── INSERT sewa baru ──
+        // ── 3. INSERT ke tabel sewa ──
         await client.from('sewa').insert({
-          'id_penyewa'    : penyewaId,
-          'id_kamar'      : _selectedKamarId,
-          'tanggal_masuk' : tglMasuk,
-          'durasi_bulan'  : _durasibulan,
-          'status_sewa'   : 'Aktif',
+          'id_penyewa': penyewaId,
+          'id_kamar': _selectedKamarId,
+          'tanggal_masuk': tglMasuk,
+          'durasi_bulan': _durasibulan,
+          'status_sewa': 'Aktif',
         });
 
-        // ── Update status kamar → Terisi ──
+        // ── 4. Update status kamar → Terisi ──
         await client
             .from('kamar')
             .update({'status_kamar': 'Terisi'})
@@ -192,7 +228,9 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
 
       if (mounted) {
         _showSnack(
-          _isEditMode ? 'Data penyewa berhasil diperbarui!' : 'Penyewa berhasil ditambahkan!',
+          _isEditMode
+              ? 'Data penyewa berhasil diperbarui!'
+              : 'Penyewa berhasil ditambahkan!',
         );
         Navigator.pop(context);
       }
@@ -204,11 +242,13 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
   }
 
   void _showSnack(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.redAccent : Colors.green,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -218,7 +258,10 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
       appBar: AppBar(
         title: Text(
           _isEditMode ? 'Edit Penyewa' : 'Tambah Penyewa',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -235,13 +278,14 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                 color: Colors.white,
                 elevation: 1,
                 shadowColor: Colors.black.withValues(alpha: 0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       // ── Nama Lengkap ──
                       _label('Nama Lengkap'),
                       _textField(
@@ -249,7 +293,9 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                         hint: 'Masukkan nama lengkap penyewa',
                         keyboardType: TextInputType.name,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Nama tidak boleh kosong';
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Nama tidak boleh kosong';
+                          }
                           return null;
                         },
                       ),
@@ -261,13 +307,23 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                         controller: _waController,
                         hint: 'Contoh: 081234567890',
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'No. WhatsApp tidak boleh kosong';
-                          if (v.length < 10) return 'No. WhatsApp tidak valid';
+                          if (v == null || v.trim().isEmpty) {
+                            return 'No. WhatsApp tidak boleh kosong';
+                          }
+                          if (v.length < 10) {
+                            return 'No. WhatsApp tidak valid';
+                          }
                           return null;
                         },
-                        prefixIcon: const Icon(Icons.phone_android_outlined, size: 18, color: Colors.grey),
+                        prefixIcon: const Icon(
+                          Icons.phone_android_outlined,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -282,8 +338,12 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                           LengthLimitingTextInputFormatter(16),
                         ],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'NIK tidak boleh kosong';
-                          if (v.length != 16) return 'NIK harus 16 digit';
+                          if (v == null || v.trim().isEmpty) {
+                            return 'NIK tidak boleh kosong';
+                          }
+                          if (v.length != 16) {
+                            return 'NIK harus 16 digit';
+                          }
                           return null;
                         },
                       ),
@@ -295,7 +355,10 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                         onTap: _pickDate,
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
@@ -305,14 +368,22 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  _tanggalMasuk != null ? _formatDate(_tanggalMasuk!) : 'Pilih tanggal masuk',
+                                  _tanggalMasuk != null
+                                      ? _formatDate(_tanggalMasuk!)
+                                      : 'Pilih tanggal masuk',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: _tanggalMasuk != null ? Colors.black87 : Colors.grey[400],
+                                    color: _tanggalMasuk != null
+                                        ? Colors.black87
+                                        : Colors.grey[400],
                                   ),
                                 ),
                               ),
-                              Icon(Icons.calendar_today_outlined, size: 20, color: Colors.grey[500]),
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 20,
+                                color: Colors.grey[500],
+                              ),
                             ],
                           ),
                         ),
@@ -322,13 +393,18 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                       // ── Durasi Sewa (bulan) ──
                       _label('Durasi Sewa'),
                       DropdownButtonFormField<int>(
-                        value: _durasibulan,
+                        initialValue: _durasibulan,
                         items: List.generate(12, (i) {
                           final val = i + 1;
-                          return DropdownMenuItem(value: val, child: Text('$val Bulan'));
+                          return DropdownMenuItem(
+                            value: val,
+                            child: Text('$val Bulan'),
+                          );
                         }),
                         decoration: _dropdownDecoration(),
-                        onChanged: (v) { if (v != null) setState(() => _durasibulan = v); },
+                        onChanged: (v) {
+                          if (v != null) setState(() => _durasibulan = v);
+                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -338,43 +414,67 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                           ? const Center(
                               child: Padding(
                                 padding: EdgeInsets.symmetric(vertical: 16),
-                                child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  color: primaryColor,
+                                  strokeWidth: 2,
+                                ),
                               ),
                             )
                           : _availableKamars.isEmpty && !_isEditMode
-                              ? Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFF3E0),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.orange.shade200),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.info_outline, color: Colors.orange[700], size: 18),
-                                      const SizedBox(width: 8),
-                                      const Expanded(
-                                        child: Text(
-                                          'Tidak ada kamar kosong. Tambah kamar terlebih dahulu.',
-                                          style: TextStyle(color: Colors.orange, fontSize: 13),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : DropdownButtonFormField<int>(
-                                  value: _selectedKamarId,
-                                  hint: Text('Pilih kamar kosong', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-                                  items: _availableKamars.map((kamar) {
-                                    final id = kamar['id_kamar'] as int;
-                                    final nomor = kamar['nomor_kamar'] as String;
-                                    return DropdownMenuItem<int>(value: id, child: Text('Kamar $nomor'));
-                                  }).toList(),
-                                  decoration: _dropdownDecoration(),
-                                  onChanged: (v) => setState(() => _selectedKamarId = v),
-                                  validator: (v) => v == null ? 'Pilih kamar terlebih dahulu' : null,
+                          ? Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF3E0),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.orange.shade200,
                                 ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.orange[700],
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Tidak ada kamar kosong. Tambah kamar terlebih dahulu.',
+                                      style: TextStyle(
+                                        color: Colors.orange,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : DropdownButtonFormField<int>(
+                              initialValue: _selectedKamarId,
+                              hint: Text(
+                                'Pilih kamar kosong',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 14,
+                                ),
+                              ),
+                              items: _availableKamars.map((kamar) {
+                                final id = kamar['id_kamar'] as int;
+                                final nomor = kamar['nomor_kamar'] as String;
+                                return DropdownMenuItem<int>(
+                                  value: id,
+                                  child: Text('Kamar $nomor'),
+                                );
+                              }).toList(),
+                              decoration: _dropdownDecoration(),
+                              onChanged: (v) =>
+                                  setState(() => _selectedKamarId = v),
+                              validator: (v) => v == null
+                                  ? 'Pilih kamar terlebih dahulu'
+                                  : null,
+                            ),
                       const SizedBox(height: 28),
 
                       // ── Tombol Simpan ──
@@ -385,7 +485,9 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             elevation: 0,
                           ),
                           onPressed: _isLoading ? null : _handleSimpan,
@@ -393,11 +495,19 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
                                 )
                               : Text(
-                                  _isEditMode ? 'Simpan Perubahan' : 'Tambah Penyewa',
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  _isEditMode
+                                      ? 'Simpan Perubahan'
+                                      : 'Tambah Penyewa',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                         ),
                       ),
@@ -416,16 +526,32 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
   // ── Helpers ────────────────────────────────
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+    ),
+  );
 
   InputDecoration _dropdownDecoration() => InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: primaryColor, width: 1.5)),
-      );
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+    focusedBorder: const OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+      borderSide: BorderSide(color: primaryColor, width: 1.5),
+    ),
+  );
 
   Widget _textField({
     required TextEditingController controller,
@@ -444,12 +570,30 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
         prefixIcon: prefixIcon,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: primaryColor, width: 1.5)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
       ),
       validator: validator,
     );

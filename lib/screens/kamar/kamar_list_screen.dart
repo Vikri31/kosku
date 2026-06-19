@@ -227,9 +227,11 @@ class _KamarListScreenState extends State<KamarListScreen> {
                                     topRight: Radius.circular(16),
                                   ),
                                   child: Image.network(
-                                    isTerisi
-                                        ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400'
-                                        : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
+                                    ((room['foto_kamar'] as List?)?.isNotEmpty ?? false)
+                                        ? (room['foto_kamar'] as List).first as String
+                                        : (isTerisi
+                                            ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400'
+                                            : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400'),
                                     height: 110,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
