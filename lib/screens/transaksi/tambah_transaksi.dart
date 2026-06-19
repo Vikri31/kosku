@@ -16,11 +16,12 @@ class TambahTransaksiScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           item == null ? 'Tambah Transaksi' : 'Edit Transaksi',
-          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: transaksiPrimaryColor,
+        backgroundColor: const Color(0xFF004D40),
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
@@ -51,7 +52,7 @@ class TambahTransaksiScreen extends StatelessWidget {
                     _InputBlock(
                       label: 'Pilih Penyewa',
                       child: DropdownButtonFormField<String>(
-                        value: selectedItem.tenantName,
+                        initialValue: selectedItem.tenantName,
                         decoration: _inputDecoration(),
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
                         items: sampleTransactions

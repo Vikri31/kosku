@@ -16,11 +16,12 @@ class DetailTransaksiScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Detail Transaksi',
-          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: transaksiPrimaryColor,
+        backgroundColor: const Color(0xFF004D40),
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),

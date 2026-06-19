@@ -286,7 +286,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                           // Income Card (Overlapping)
                           Positioned(
-                            top: 150,
+                            top: 170,
                             left: 20,
                             right: 20,
                             child: Container(

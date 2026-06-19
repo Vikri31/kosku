@@ -9,17 +9,19 @@ class DaftarTransaksiScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF004D40);
+
     return Scaffold(
       backgroundColor: transaksiBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'KosKu',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
         automaticallyImplyLeading: false,
-        backgroundColor: transaksiPrimaryColor,
+        backgroundColor: primaryColor,
       ),
       body: SafeArea(
         top: false,
