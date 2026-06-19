@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kamar_form_screen.dart';
+import 'kamar_detail_screen.dart';
 
 class KamarListScreen extends StatefulWidget {
   const KamarListScreen({super.key});
@@ -197,7 +198,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DetailKamarScreen(
+                            builder: (context) => KamarDetailScreen(
                               idKamar: idKamar,
                               nomorKamar: nomorKamar,
                               harga: harga,
@@ -352,70 +353,3 @@ class _KamarListScreenState extends State<KamarListScreen> {
   }
 }
 
-// --- DUMMY PLACEHOLDER DETAIL KAMAR SCREEN ---
-class DetailKamarScreen extends StatelessWidget {
-  final int idKamar;
-  final String nomorKamar;
-  final num harga;
-  final String status;
-
-  const DetailKamarScreen({
-    super.key,
-    required this.idKamar,
-    required this.nomorKamar,
-    required this.harga,
-    required this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF004D40);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Detail Kamar $nomorKamar',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: primaryColor,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.bed_outlined, size: 100, color: primaryColor),
-              const SizedBox(height: 16),
-              Text(
-                'Kamar $nomorKamar',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryColor),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Harga Sewa: Rp $harga / bulan',
-                style: const TextStyle(fontSize: 18, color: Colors.black87),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Status: $status',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: status == 'Terisi' ? Colors.green : Colors.red,
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Detail informasi penyewa dan riwayat pembayaran\nsedang dalam tahap pengembangan.',
-                style: TextStyle(color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

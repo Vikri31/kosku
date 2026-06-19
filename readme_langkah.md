@@ -1,5 +1,5 @@
 setiap mau ngoding, ketikkan hal berikut agar bisa mengambil versi terbaru yang sudah di push:
-git pull origin main
+git pull origin main 
 
 1. setelah melakukan git clone, lalu buat file .env yang isinya sudah saya share di whatsapp
 
