@@ -71,7 +71,19 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
     final diff = now.difference(date).inDays;
     if (diff == 0) return 'Hari ini';
     if (diff < 0) return 'Dalam ${diff.abs()} hari';
-    return '$diff Bulan lalu';
+    final bulan = (diff / 30).round();
+    if (bulan < 1) return '$diff hari lalu';
+    return '$bulan bulan lalu';
+  }
+
+  /// Hitung tanggal jatuh tempo dari tanggal_masuk + durasi_bulan
+  DateTime? _getJatuhTempo() {
+    final tglMasukStr = _sewaData?['tanggal_masuk'];
+    final durasi = _sewaData?['durasi_bulan'] as int? ?? 1;
+    if (tglMasukStr == null) return null;
+    final tglMasuk = DateTime.tryParse(tglMasukStr);
+    if (tglMasuk == null) return null;
+    return DateTime(tglMasuk.year, tglMasuk.month + durasi, tglMasuk.day);
   }
 
   String _getDueDateStatus(String? dateStr) {
@@ -87,9 +99,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
     return 'Telat ${diff.abs()} hari';
   }
 
-  bool _isDueDateOverdue(String? dateStr) {
-    if (dateStr == null) return false;
-    final date = DateTime.tryParse(dateStr);
+  bool _isDueDateOverdue(DateTime? date) {
     if (date == null) return false;
     return date.isBefore(DateTime.now());
   }
@@ -397,7 +407,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                   builder: (_) => PenyewaFormScreen(
                                     penyewaData: _penyewaData,
                                     sewaData: _sewaData,
-                                    preselectedKamarId: widget.idKamar,
+                                    preselectedKamarId: _sewaData?['id_kamar'] as int? ?? widget.idKamar,
                                     preselectedKamarNomor: widget.nomorKamar,
                                   ),
                                 ),
@@ -451,8 +461,8 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   }
 
   Widget _buildPenyewaCard() {
-    final nama = _penyewaData?['nama_lengkap'] ?? '-';
-    final phone = _penyewaData?['no_hp'] ?? '-';
+    final nama  = _penyewaData?['nama_lengkap'] ?? '-';
+    final wa    = _penyewaData?['nomor_whatsapp'] ?? '-';
     final initial = nama.isNotEmpty ? nama[0].toUpperCase() : 'P';
 
     return Container(
@@ -494,9 +504,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.phone_outlined, size: 14, color: Colors.grey),
+                    const Icon(Icons.phone_android_outlined, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(phone, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                    Text(wa, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                   ],
                 ),
               ],
@@ -509,8 +519,8 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
   Widget _buildInformasiPribadiCard() {
     final nama = _penyewaData?['nama_lengkap'] ?? '-';
-    final phone = _penyewaData?['no_hp'] ?? '-';
-    final ktp = _penyewaData?['no_ktp'] ?? '-';
+    final wa   = _penyewaData?['nomor_whatsapp'] ?? '-';
+    final nik  = _penyewaData?['nik'] ?? '-';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -526,9 +536,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
           const SizedBox(height: 16),
           _buildInfoRow('Nama Lengkap', nama, canCopy: false),
           const Divider(height: 24),
-          _buildInfoRow('No HP', phone, canCopy: true),
+          _buildInfoRow('No. WhatsApp', wa, canCopy: true),
           const Divider(height: 24),
-          _buildInfoRow('No KTP', ktp, canCopy: true),
+          _buildInfoRow('No. KTP (NIK)', nik, canCopy: true),
         ],
       ),
     );
@@ -641,9 +651,12 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   }
 
   Widget _buildJatuhTempoCard() {
-    final jatuhTempo = _sewaData?['tanggal_jatuh_tempo'];
+    final jatuhTempo = _getJatuhTempo();
+    final jatuhTempoStr = jatuhTempo != null
+        ? '${jatuhTempo.year}-${jatuhTempo.month.toString().padLeft(2, '0')}-${jatuhTempo.day.toString().padLeft(2, '0')}'
+        : null;
     final isOverdue = _isDueDateOverdue(jatuhTempo);
-    final statusText = _getDueDateStatus(jatuhTempo);
+    final statusText = _getDueDateStatus(jatuhTempoStr);
     final cardColor = isOverdue ? const Color(0xFFFFEBEE) : const Color(0xFFF3E5F5);
     final iconColor = isOverdue ? const Color(0xFFC62828) : const Color(0xFF7B1FA2);
     final textColor = isOverdue ? const Color(0xFFC62828) : Colors.black87;
@@ -674,7 +687,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            _formatDate(jatuhTempo),
+            jatuhTempo != null ? _formatDate(jatuhTempoStr) : '-',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
           ),
           Text(

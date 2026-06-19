@@ -18,6 +18,7 @@ class DaftarTransaksiScreen extends StatelessWidget {
         ),
         centerTitle: true,
         elevation: 0,
+        automaticallyImplyLeading: false,
         backgroundColor: transaksiPrimaryColor,
       ),
       body: SafeArea(

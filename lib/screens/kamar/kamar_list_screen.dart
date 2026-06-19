@@ -66,6 +66,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
         backgroundColor: primaryColor,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

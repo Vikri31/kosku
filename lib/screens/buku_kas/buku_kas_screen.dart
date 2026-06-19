@@ -97,6 +97,7 @@ class _BukuKasScreenState extends State<BukuKasScreen> {
         backgroundColor: primaryColor,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(

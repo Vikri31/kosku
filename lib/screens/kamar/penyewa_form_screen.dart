@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Skema Supabase (aktif):
+// penyewa   : id_penyewa (int8 PK), nik (text), nomor_whatsapp (text), nama_lengkap (text)
+// sewa      : id_sewa (int8 PK), id_kamar (int8 FK), id_penyewa (int8 FK),
+//             tanggal_masuk (date), durasi_bulan (int4), status_sewa (text)
+
 class PenyewaFormScreen extends StatefulWidget {
-  /// If editing: pass penyewa and sewa data
+  /// Jika edit: kirim penyewaData dan sewaData
   final Map<String, dynamic>? penyewaData;
   final Map<String, dynamic>? sewaData;
 
-  /// Optionally pre-select a room
+  /// Opsional — preselect kamar tertentu
   final int? preselectedKamarId;
   final String? preselectedKamarNomor;
 
@@ -28,10 +33,11 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _ktpController = TextEditingController();
+  final _waController = TextEditingController();   // nomor_whatsapp
+  final _nikController = TextEditingController();  // nik
 
   DateTime? _tanggalMasuk;
+  int _durasibulan = 1;
   int? _selectedKamarId;
 
   List<Map<String, dynamic>> _availableKamars = [];
@@ -45,13 +51,14 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     super.initState();
     if (_isEditMode) {
       _namaController.text = widget.penyewaData?['nama_lengkap'] ?? '';
-      _phoneController.text = widget.penyewaData?['no_hp'] ?? '';
-      _ktpController.text = widget.penyewaData?['no_ktp'] ?? '';
+      _waController.text   = widget.penyewaData?['nomor_whatsapp'] ?? '';
+      _nikController.text  = widget.penyewaData?['nik'] ?? '';
 
       final tanggalStr = widget.sewaData?['tanggal_masuk'];
       if (tanggalStr != null) {
         _tanggalMasuk = DateTime.tryParse(tanggalStr);
       }
+      _durasibulan = widget.sewaData?['durasi_bulan'] as int? ?? 1;
     }
 
     if (widget.preselectedKamarId != null) {
@@ -64,8 +71,8 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
   @override
   void dispose() {
     _namaController.dispose();
-    _phoneController.dispose();
-    _ktpController.dispose();
+    _waController.dispose();
+    _nikController.dispose();
     super.dispose();
   }
 
@@ -73,17 +80,20 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     setState(() => _isLoadingKamars = true);
     try {
       final client = Supabase.instance.client;
-      // Load kosong rooms + the current room if editing
-      final query = client.from('kamar').select('id_kamar, nomor_kamar');
       final List<dynamic> result;
       if (_isEditMode && _selectedKamarId != null) {
-        // show all including current
-        result = await query.or('status_kamar.eq.Kosong,id_kamar.eq.$_selectedKamarId');
+        result = await client
+            .from('kamar')
+            .select('id_kamar, nomor_kamar')
+            .or('status_kamar.eq.Kosong,id_kamar.eq.$_selectedKamarId');
       } else {
-        result = await query.eq('status_kamar', 'Kosong');
+        result = await client
+            .from('kamar')
+            .select('id_kamar, nomor_kamar')
+            .eq('status_kamar', 'Kosong');
       }
       _availableKamars = List<Map<String, dynamic>>.from(result);
-    } catch (_) {
+    } catch (e) {
       _availableKamars = [];
     } finally {
       if (mounted) setState(() => _isLoadingKamars = false);
@@ -105,113 +115,100 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
       initialDate: _tanggalMasuk ?? now,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 2),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: primaryColor,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-            ),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: primaryColor,
+            onPrimary: Colors.white,
+            surface: Colors.white,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
-    if (picked != null) {
-      setState(() => _tanggalMasuk = picked);
-    }
+    if (picked != null) setState(() => _tanggalMasuk = picked);
   }
 
   Future<void> _handleSimpan() async {
     if (!_formKey.currentState!.validate()) return;
     if (_tanggalMasuk == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tanggal masuk wajib diisi'), backgroundColor: Colors.redAccent),
-      );
+      _showSnack('Tanggal masuk wajib diisi', isError: true);
       return;
     }
     if (_selectedKamarId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih kamar terlebih dahulu'), backgroundColor: Colors.redAccent),
-      );
+      _showSnack('Pilih kamar terlebih dahulu', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       final client = Supabase.instance.client;
-      final nama = _namaController.text.trim();
-      final phone = _phoneController.text.trim();
-      final ktp = _ktpController.text.trim();
-      final tanggalMasukStr = _tanggalMasuk!.toIso8601String().split('T').first;
-
-      // Calculate jatuh tempo: 1 month from tanggal masuk
-      final jatuhTempo = DateTime(
-        _tanggalMasuk!.year,
-        _tanggalMasuk!.month + 1,
-        _tanggalMasuk!.day,
-      );
-      final jatuhTempoStr = jatuhTempo.toIso8601String().split('T').first;
-
-      int penyewaId;
+      final nama  = _namaController.text.trim();
+      final wa    = _waController.text.trim();
+      final nik   = _nikController.text.trim();
+      final tglMasuk = _tanggalMasuk!.toIso8601String().split('T').first;
 
       if (_isEditMode) {
-        // Update penyewa
-        penyewaId = widget.penyewaData!['id_penyewa'] as int;
+        // ── UPDATE penyewa ──
+        final penyewaId = widget.penyewaData!['id_penyewa'];
         await client.from('penyewa').update({
-          'nama_lengkap': nama,
-          'no_hp': phone,
-          'no_ktp': ktp,
+          'nama_lengkap'   : nama,
+          'nomor_whatsapp' : wa,
+          'nik'            : nik,
         }).eq('id_penyewa', penyewaId);
 
-        // Update sewa
-        final sewaId = widget.sewaData!['id_sewa'] as int;
+        // ── UPDATE sewa ──
+        final sewaId = widget.sewaData!['id_sewa'];
         await client.from('sewa').update({
-          'id_kamar': _selectedKamarId,
-          'tanggal_masuk': tanggalMasukStr,
-          'tanggal_jatuh_tempo': jatuhTempoStr,
+          'id_kamar'      : _selectedKamarId,
+          'tanggal_masuk' : tglMasuk,
+          'durasi_bulan'  : _durasibulan,
         }).eq('id_sewa', sewaId);
       } else {
-        // Insert new penyewa
-        final penyewaResult = await client.from('penyewa').insert({
-          'nama_lengkap': nama,
-          'no_hp': phone,
-          'no_ktp': ktp,
+        // ── INSERT penyewa baru ──
+        final penyewaRes = await client.from('penyewa').insert({
+          'nama_lengkap'   : nama,
+          'nomor_whatsapp' : wa,
+          'nik'            : nik,
         }).select().single();
-        penyewaId = penyewaResult['id_penyewa'] as int;
 
-        // Insert new sewa
+        final penyewaId = penyewaRes['id_penyewa'];
+
+        // ── INSERT sewa baru ──
         await client.from('sewa').insert({
-          'id_penyewa': penyewaId,
-          'id_kamar': _selectedKamarId,
-          'tanggal_masuk': tanggalMasukStr,
-          'tanggal_jatuh_tempo': jatuhTempoStr,
-          'status_sewa': 'Aktif',
+          'id_penyewa'    : penyewaId,
+          'id_kamar'      : _selectedKamarId,
+          'tanggal_masuk' : tglMasuk,
+          'durasi_bulan'  : _durasibulan,
+          'status_sewa'   : 'Aktif',
         });
 
-        // Update kamar status to Terisi
-        await client.from('kamar').update({'status_kamar': 'Terisi'}).eq('id_kamar', _selectedKamarId!);
+        // ── Update status kamar → Terisi ──
+        await client
+            .from('kamar')
+            .update({'status_kamar': 'Terisi'})
+            .eq('id_kamar', _selectedKamarId!);
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditMode ? 'Data penyewa berhasil diperbarui!' : 'Penyewa berhasil ditambahkan!'),
-            backgroundColor: Colors.green,
-          ),
+        _showSnack(
+          _isEditMode ? 'Data penyewa berhasil diperbarui!' : 'Penyewa berhasil ditambahkan!',
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
+      if (mounted) _showSnack('Gagal menyimpan: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? Colors.redAccent : Colors.green,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   @override
@@ -234,7 +231,6 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // --- MAIN FORM CARD ---
               Card(
                 color: Colors.white,
                 elevation: 1,
@@ -245,13 +241,13 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nama Lengkap
-                      _buildFieldLabel('Nama Lengkap'),
-                      _buildTextField(
+
+                      // ── Nama Lengkap ──
+                      _label('Nama Lengkap'),
+                      _textField(
                         controller: _namaController,
                         hint: 'Masukkan nama lengkap penyewa',
                         keyboardType: TextInputType.name,
-                        inputFormatters: [],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Nama tidak boleh kosong';
                           return null;
@@ -259,25 +255,26 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // No. Handphone
-                      _buildFieldLabel('No. Handphone'),
-                      _buildTextField(
-                        controller: _phoneController,
+                      // ── No. WhatsApp ──
+                      _label('No. WhatsApp'),
+                      _textField(
+                        controller: _waController,
                         hint: 'Contoh: 081234567890',
                         keyboardType: TextInputType.phone,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'No. HP tidak boleh kosong';
-                          if (v.length < 10) return 'No. HP tidak valid';
+                          if (v == null || v.trim().isEmpty) return 'No. WhatsApp tidak boleh kosong';
+                          if (v.length < 10) return 'No. WhatsApp tidak valid';
                           return null;
                         },
+                        prefixIcon: const Icon(Icons.phone_android_outlined, size: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 20),
 
-                      // No. KTP
-                      _buildFieldLabel('No. KTP (NIK)'),
-                      _buildTextField(
-                        controller: _ktpController,
+                      // ── NIK ──
+                      _label('No. KTP (NIK)'),
+                      _textField(
+                        controller: _nikController,
                         hint: 'Masukkan 16 digit NIK',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -285,15 +282,15 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                           LengthLimitingTextInputFormatter(16),
                         ],
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'No. KTP tidak boleh kosong';
+                          if (v == null || v.trim().isEmpty) return 'NIK tidak boleh kosong';
                           if (v.length != 16) return 'NIK harus 16 digit';
                           return null;
                         },
                       ),
                       const SizedBox(height: 20),
 
-                      // Tanggal Masuk
-                      _buildFieldLabel('Tanggal Masuk'),
+                      // ── Tanggal Masuk ──
+                      _label('Tanggal Masuk'),
                       GestureDetector(
                         onTap: _pickDate,
                         child: Container(
@@ -308,9 +305,7 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  _tanggalMasuk != null
-                                      ? _formatDate(_tanggalMasuk!)
-                                      : 'mm/dd/yyyy',
+                                  _tanggalMasuk != null ? _formatDate(_tanggalMasuk!) : 'Pilih tanggal masuk',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: _tanggalMasuk != null ? Colors.black87 : Colors.grey[400],
@@ -324,8 +319,21 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Pilih Kamar
-                      _buildFieldLabel('Pilih Kamar'),
+                      // ── Durasi Sewa (bulan) ──
+                      _label('Durasi Sewa'),
+                      DropdownButtonFormField<int>(
+                        value: _durasibulan,
+                        items: List.generate(12, (i) {
+                          final val = i + 1;
+                          return DropdownMenuItem(value: val, child: Text('$val Bulan'));
+                        }),
+                        decoration: _dropdownDecoration(),
+                        onChanged: (v) { if (v != null) setState(() => _durasibulan = v); },
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Pilih Kamar ──
+                      _label('Pilih Kamar'),
                       _isLoadingKamars
                           ? const Center(
                               child: Padding(
@@ -348,7 +356,7 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                                       const SizedBox(width: 8),
                                       const Expanded(
                                         child: Text(
-                                          'Tidak ada kamar kosong tersedia.',
+                                          'Tidak ada kamar kosong. Tambah kamar terlebih dahulu.',
                                           style: TextStyle(color: Colors.orange, fontSize: 13),
                                         ),
                                       ),
@@ -356,44 +364,20 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                                   ),
                                 )
                               : DropdownButtonFormField<int>(
-                                  initialValue: _selectedKamarId,
-                                  hint: Text(
-                                    'Pilih kamar kosong',
-                                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                                  ),
+                                  value: _selectedKamarId,
+                                  hint: Text('Pilih kamar kosong', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
                                   items: _availableKamars.map((kamar) {
                                     final id = kamar['id_kamar'] as int;
                                     final nomor = kamar['nomor_kamar'] as String;
-                                    return DropdownMenuItem<int>(
-                                      value: id,
-                                      child: Text('Kamar $nomor'),
-                                    );
+                                    return DropdownMenuItem<int>(value: id, child: Text('Kamar $nomor'));
                                   }).toList(),
-                                  decoration: InputDecoration(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: Colors.grey[300]!),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: Colors.grey[300]!),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: primaryColor, width: 1.5),
-                                    ),
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedKamarId = value;
-                                    });
-                                  },
+                                  decoration: _dropdownDecoration(),
+                                  onChanged: (v) => setState(() => _selectedKamarId = v),
                                   validator: (v) => v == null ? 'Pilih kamar terlebih dahulu' : null,
                                 ),
                       const SizedBox(height: 28),
 
-                      // --- SUBMIT BUTTON ---
+                      // ── Tombol Simpan ──
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -429,22 +413,27 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     );
   }
 
-  Widget _buildFieldLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
-      ),
-    );
-  }
+  // ── Helpers ────────────────────────────────
 
-  Widget _buildTextField({
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
+      );
+
+  InputDecoration _dropdownDecoration() => InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: primaryColor, width: 1.5)),
+      );
+
+  Widget _textField({
     required TextEditingController controller,
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter> inputFormatters = const [],
     String? Function(String?)? validator,
+    Widget? prefixIcon,
   }) {
     return TextFormField(
       controller: controller,
@@ -454,27 +443,13 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        prefixIcon: prefixIcon,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryColor, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: primaryColor, width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
       ),
       validator: validator,
     );
