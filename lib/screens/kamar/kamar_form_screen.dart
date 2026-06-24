@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -38,10 +40,12 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
   void initState() {
     super.initState();
     if (widget.roomData != null) {
-      _nomorKamarController.text = widget.roomData!['nomor_kamar']?.toString() ?? '';
-      _hargaSewaController.text = widget.roomData!['harga_sewa_dasar']?.toString() ?? '';
+      _nomorKamarController.text =
+          widget.roomData!['nomor_kamar']?.toString() ?? '';
+      _hargaSewaController.text =
+          widget.roomData!['harga_sewa_dasar']?.toString() ?? '';
       _statusKamar = widget.roomData!['status_kamar'] ?? 'Kosong';
-      
+
       // Load existing photo URLs if any
       final existingPhotos = widget.roomData!['foto_kamar'];
       if (existingPhotos != null) {
@@ -93,20 +97,63 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
     }
   }
 
+  String _getContentType(String extension) {
+    switch (extension.toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  Future<String?> _uploadImageWeb(Uint8List bytes, String fileName) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final fileExtension = path.extension(fileName);
+      final String uniqueFileName =
+          'room_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExtension';
+      final String uploadPath = 'uploads/$uniqueFileName';
+
+      await supabase.storage
+          .from('foto_kamar')
+          .uploadBinary(
+            uploadPath,
+            bytes,
+            fileOptions: FileOptions(
+              contentType: _getContentType(fileExtension),
+            ),
+          );
+
+      final String publicUrl = supabase.storage
+          .from('foto_kamar')
+          .getPublicUrl(uploadPath);
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading image on Web: $e');
+      rethrow;
+    }
+  }
+
   Future<String?> _uploadImage(File file) async {
     try {
       final supabase = Supabase.instance.client;
       final fileExtension = path.extension(file.path);
-      final String uniqueFileName = 'room_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExtension';
+      final String uniqueFileName =
+          'room_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExtension';
       final String uploadPath = 'uploads/$uniqueFileName';
 
       await supabase.storage.from('foto_kamar').upload(uploadPath, file);
-      
-      final String publicUrl = supabase.storage.from('foto_kamar').getPublicUrl(uploadPath);
+
+      final String publicUrl = supabase.storage
+          .from('foto_kamar')
+          .getPublicUrl(uploadPath);
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading image: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -132,12 +179,18 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF004D40)),
+              leading: const Icon(
+                Icons.camera_alt_outlined,
+                color: Color(0xFF004D40),
+              ),
               title: const Text('Kamera'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF004D40)),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: Color(0xFF004D40),
+              ),
               title: const Text('Galeri'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -154,12 +207,14 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
     if (pickedFile == null) return;
 
     // Validate file extension
-    final extension = path.extension(pickedFile.path).toLowerCase();
+    final extension = path.extension(pickedFile.name).toLowerCase();
     if (extension != '.jpg' && extension != '.jpeg' && extension != '.png') {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Hanya format JPG, JPEG, dan PNG yang diperbolehkan.'),
+            content: Text(
+              'Hanya format JPG, JPEG, dan PNG yang diperbolehkan.',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -172,20 +227,30 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
     });
 
     try {
-      final File rawFile = File(pickedFile.path);
-      final File? compressedFile = await _compressImage(rawFile);
-      if (compressedFile == null) {
-        throw Exception('Gagal mengompresi gambar');
+      String? publicUrl;
+
+      if (kIsWeb) {
+        final Uint8List bytes = await pickedFile.readAsBytes();
+        publicUrl = await _uploadImageWeb(bytes, pickedFile.name);
+      } else {
+        final File rawFile = File(pickedFile.path);
+        File uploadFile = rawFile;
+
+        final File? compressedFile = await _compressImage(rawFile);
+        if (compressedFile != null) {
+          uploadFile = compressedFile;
+        } else {
+          debugPrint('Gagal mengompresi gambar, menggunakan file asli.');
+        }
+
+        publicUrl = await _uploadImage(uploadFile);
       }
 
-      final String? publicUrl = await _uploadImage(compressedFile);
-      if (publicUrl == null) {
-        throw Exception('Gagal mengunggah gambar');
+      if (publicUrl != null) {
+        setState(() {
+          _fotoKamarUrls.add(publicUrl!);
+        });
       }
-
-      setState(() {
-        _fotoKamarUrls.add(publicUrl);
-      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,7 +337,10 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
       appBar: AppBar(
         title: Text(
           isEditMode ? 'Edit Kamar' : 'Tambah Kamar',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -290,7 +358,9 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                 color: Colors.white,
                 elevation: 1,
                 shadowColor: Colors.black.withValues(alpha: 0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -326,8 +396,14 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                         controller: _nomorKamarController,
                         decoration: InputDecoration(
                           hintText: 'Misal: A1, B2, atau Mawar',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -338,7 +414,10 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: primaryColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -365,10 +444,19 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           prefixText: 'Rp ',
-                          prefixStyle: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+                          prefixStyle: const TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
                           hintText: '0',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -379,7 +467,10 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: primaryColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -413,7 +504,10 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                           );
                         }).toList(),
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -424,7 +518,10 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: primaryColor,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         onChanged: (value) {
@@ -446,7 +543,9 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                 color: Colors.white,
                 elevation: 1,
                 shadowColor: Colors.black.withValues(alpha: 0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -470,12 +569,13 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 2.8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 2.8,
+                            ),
                         itemCount: _facilities.keys.length,
                         itemBuilder: (context, index) {
                           final facility = _facilities.keys.elementAt(index);
@@ -511,12 +611,19 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                               dense: true,
                               title: Row(
                                 children: [
-                                  Icon(getFacilityIcon(facility), size: 18, color: primaryColor),
+                                  Icon(
+                                    getFacilityIcon(facility),
+                                    size: 18,
+                                    color: primaryColor,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       facility,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -546,7 +653,9 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                 color: Colors.white,
                 elevation: 1,
                 shadowColor: Colors.black.withValues(alpha: 0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -585,16 +694,27 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.grey[400]),
+                                Icon(
+                                  Icons.cloud_upload_outlined,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                ),
                                 const SizedBox(height: 8),
                                 const Text(
                                   'Ketuk untuk mengunggah foto',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Maksimal 5 foto (JPG, PNG)',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
                                 ),
                               ],
                             ),
@@ -615,7 +735,9 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                                     height: 80,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey[200]!),
+                                      border: Border.all(
+                                        color: Colors.grey[200]!,
+                                      ),
                                       image: DecorationImage(
                                         image: NetworkImage(url),
                                         fit: BoxFit.cover,
@@ -668,7 +790,8 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                                   ),
                                 ),
                               ),
-                            if (_fotoKamarUrls.length < 5 && !_isCompressingOrUploading)
+                            if (_fotoKamarUrls.length < 5 &&
+                                !_isCompressingOrUploading)
                               GestureDetector(
                                 onTap: _pickAndUploadImage,
                                 child: Container(
@@ -685,7 +808,11 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add_a_photo_outlined, size: 24, color: Colors.grey[400]),
+                                      Icon(
+                                        Icons.add_a_photo_outlined,
+                                        size: 24,
+                                        color: Colors.grey[400],
+                                      ),
                                       const SizedBox(height: 4),
                                       Text(
                                         'Tambah',
