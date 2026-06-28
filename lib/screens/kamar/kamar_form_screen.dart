@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,6 +25,16 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
   bool _isLoading = false;
   List<String> _fotoKamarUrls = [];
   bool _isCompressingOrUploading = false;
+
+  String _generateKodeKamar() {
+    final random = Random();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excludes I, O, 1, 0
+    final buffer = StringBuffer('KOS-');
+    for (int i = 0; i < 4; i++) {
+      buffer.write(chars[random.nextInt(chars.length)]);
+    }
+    return buffer.toString();
+  }
 
   // Mock states for Facilities
   final Map<String, bool> _facilities = {
@@ -285,17 +295,23 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
           .map((e) => e.key)
           .toList();
 
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
       final Map<String, dynamic> payload = {
         'nomor_kamar': nomorKamar,
         'harga_sewa_dasar': hargaSewa,
         'status_kamar': _statusKamar,
         'fasilitas': selectedFacilities,
         'foto_kamar': _fotoKamarUrls,
+        'id_admin': currentUserId,
       };
 
       // If editing, include the Primary Key to perform an UPDATE upsert
       if (widget.roomData != null) {
         payload['id_kamar'] = widget.roomData!['id_kamar'];
+      } else {
+        // Only generate code for a new room
+        payload['kode_kamar'] = _generateKodeKamar();
       }
 
       await Supabase.instance.client.from('kamar').upsert(payload);

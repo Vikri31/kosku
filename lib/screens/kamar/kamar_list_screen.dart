@@ -13,6 +13,32 @@ class KamarListScreen extends StatefulWidget {
 class _KamarListScreenState extends State<KamarListScreen> {
   String _selectedFilter = 'Semua'; // Semua, Terisi, Kosong
 
+  Color _getStatusBgColor(String status) {
+    switch (status) {
+      case 'Terisi':
+        return const Color(0xFFE0F2F1); // Teal
+      case 'Kosong':
+        return const Color(0xFFE8F5E9); // Green
+      case 'Jatuh Tempo':
+        return const Color(0xFFFFEBEE); // Red/Pink
+      default:
+        return Colors.grey[200]!;
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status) {
+      case 'Terisi':
+        return const Color(0xFF00796B); // Teal
+      case 'Kosong':
+        return const Color(0xFF2E7D32); // Green
+      case 'Jatuh Tempo':
+        return const Color(0xFFC62828); // Red
+      default:
+        return Colors.grey[700]!;
+    }
+  }
+
   // Helper to format currency
   String _formatRupiah(num number) {
     final str = number.toString();
@@ -55,6 +81,11 @@ class _KamarListScreenState extends State<KamarListScreen> {
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF004D40);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final stream = Supabase.instance.client
+        .from('kamar')
+        .stream(primaryKey: ['id_kamar'])
+        .eq('id_admin', currentUserId ?? '');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
@@ -106,7 +137,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20, bottom: 16),
             child: Row(
-              children: ['Semua', 'Terisi', 'Kosong'].map((filter) {
+              children: ['Semua', 'Terisi', 'Kosong', 'Jatuh Tempo'].map((filter) {
                 final isSelected = _selectedFilter == filter;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
@@ -143,9 +174,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
           // --- GRID LIST OF ROOMS ---
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: Supabase.instance.client
-                  .from('kamar')
-                  .stream(primaryKey: ['id_kamar']),
+              stream: stream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: primaryColor));
@@ -252,13 +281,13 @@ class _KamarListScreenState extends State<KamarListScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isTerisi ? const Color(0xFFE0F2F1) : const Color(0xFFFFEBEE),
+                                      color: _getStatusBgColor(status),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
                                       status.toUpperCase(),
                                       style: TextStyle(
-                                        color: isTerisi ? const Color(0xFF00796B) : const Color(0xFFC62828),
+                                        color: _getStatusTextColor(status),
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
