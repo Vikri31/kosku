@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
-import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/admin/dashboard/dashboard_screen.dart';
 
 
 void main() async {
