@@ -58,8 +58,19 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
     final date = DateTime.tryParse(dateStr);
     if (date == null) return '-';
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     return '${date.day} ${months[date.month]} ${date.year}';
   }
@@ -164,7 +175,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Kamar', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Hapus Kamar',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Apakah Anda yakin ingin menghapus Kamar ${widget.nomorKamar}? Tindakan ini tidak dapat dibatalkan.',
         ),
@@ -177,7 +191,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC62828),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus'),
@@ -204,7 +220,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal menghapus: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Gagal menghapus: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
@@ -230,7 +249,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                   iconTheme: const IconThemeData(color: Colors.white),
                   title: const Text(
                     'Detail Kamar',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   flexibleSpace: FlexibleSpaceBar(
                     background: Stack(
@@ -242,27 +264,45 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                     ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600'
                                     : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  color: primaryColor.withValues(alpha: 0.3),
-                                  child: const Icon(Icons.bed_outlined, size: 60, color: Colors.white54),
-                                ),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      color: primaryColor.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      child: const Icon(
+                                        Icons.bed_outlined,
+                                        size: 60,
+                                        color: Colors.white54,
+                                      ),
+                                    ),
                               )
                             : PageView.builder(
-                                itemCount: (_kamarData!['foto_kamar'] as List).length,
+                                itemCount:
+                                    (_kamarData!['foto_kamar'] as List).length,
                                 onPageChanged: (index) {
                                   setState(() {
                                     _currentImageIndex = index;
                                   });
                                 },
                                 itemBuilder: (context, index) {
-                                  final url = (_kamarData!['foto_kamar'] as List)[index] as String;
+                                  final url =
+                                      (_kamarData!['foto_kamar'] as List)[index]
+                                          as String;
                                   return Image.network(
                                     url,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      color: primaryColor.withValues(alpha: 0.3),
-                                      child: const Icon(Icons.broken_image_outlined, size: 60, color: Colors.white54),
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: primaryColor.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              child: const Icon(
+                                                Icons.broken_image_outlined,
+                                                size: 60,
+                                                color: Colors.white54,
+                                              ),
+                                            ),
                                   );
                                 },
                               ),
@@ -294,9 +334,13 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                 (i) => Container(
                                   width: _currentImageIndex == i ? 20 : 8,
                                   height: 8,
-                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _currentImageIndex == i ? primaryColor : Colors.white.withValues(alpha: 0.6),
+                                    color: _currentImageIndex == i
+                                        ? primaryColor
+                                        : Colors.white.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -354,9 +398,14 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                             ),
                             // Status Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                color: isTerisi ? const Color(0xFFE0F2F1) : const Color(0xFFFFEBEE),
+                                color: isTerisi
+                                    ? const Color(0xFFE0F2F1)
+                                    : const Color(0xFFFFEBEE),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -366,7 +415,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                     width: 8,
                                     height: 8,
                                     decoration: BoxDecoration(
-                                      color: isTerisi ? const Color(0xFF00796B) : const Color(0xFFC62828),
+                                      color: isTerisi
+                                          ? const Color(0xFF00796B)
+                                          : const Color(0xFFC62828),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -374,7 +425,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                   Text(
                                     widget.status,
                                     style: TextStyle(
-                                      color: isTerisi ? const Color(0xFF00796B) : const Color(0xFFC62828),
+                                      color: isTerisi
+                                          ? const Color(0xFF00796B)
+                                          : const Color(0xFFC62828),
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -389,14 +442,19 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                         // --- FASILITAS CHIPS ---
                         Builder(
                           builder: (context) {
-                            final List<dynamic> fasilitas = _kamarData?['fasilitas'] as List<dynamic>? ?? [];
+                            final List<dynamic> fasilitas =
+                                _kamarData?['fasilitas'] as List<dynamic>? ??
+                                [];
                             if (fasilitas.isEmpty) {
                               return Text(
                                 'Tidak ada fasilitas khusus',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[500],
+                                ),
                               );
                             }
-                            
+
                             IconData getFacilityIcon(String name) {
                               switch (name) {
                                 case 'Kasur':
@@ -421,7 +479,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                               runSpacing: 8,
                               children: fasilitas.map((f) {
                                 final name = f.toString();
-                                return _buildFasilitasChip(getFacilityIcon(name), name);
+                                return _buildFasilitasChip(
+                                  getFacilityIcon(name),
+                                  name,
+                                );
                               }).toList(),
                             );
                           },
@@ -432,7 +493,11 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                         if (isTerisi && _penyewaData != null) ...[
                           const Text(
                             'Penyewa Aktif',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           _buildPenyewaCard(),
@@ -447,10 +512,89 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                           const SizedBox(height: 24),
                           _buildHistoriPembayaranSection(),
                           const SizedBox(height: 24),
+
+                          // ... potongan kode di atasnya ...
                         ] else if (!isTerisi) ...[
                           _buildKosongCard(),
                           const SizedBox(height: 24),
-                        ],
+
+                          // === Tempel Kodingan StreamBuilder-nya di bawah ini ===
+                          StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: Supabase.instance.client
+                                .from('request_join')
+                                .stream(primaryKey: ['id_request'])
+                                .eq(
+                                  'id_kamar',
+                                  widget.idKamar,
+                                ), // Hanya satu .eq() yang diizinkan di stream SDK terbaru
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData || snapshot.data!.isEmpty)
+                                return const SizedBox.shrink();
+
+                              // Saring data berdasarkan status_request 'Menunggu Konfirmasi' di sisi aplikasi
+                              final pendingRequests = snapshot.data!
+                                  .where(
+                                    (req) =>
+                                        req['status_request'] ==
+                                        'Menunggu Konfirmasi',
+                                  )
+                                  .toList();
+
+                              if (pendingRequests.isEmpty)
+                                return const SizedBox.shrink();
+                              final requestCount = pendingRequests.length;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3E0),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: accentOrange),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.notification_important_outlined,
+                                      color: accentOrange,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Ada $requestCount calon penghuni meminta bergabung di kamar ini!',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: accentOrange,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/admin/kamar/konfirmasi',
+                                          arguments: pendingRequests
+                                              .first['id_request'], // Ambil id_request dari data yang sudah difilter
+                                        );
+                                      },
+                                      child: const Text('Periksa'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ), // <--- Penutup StreamBuilder
+                        ], // <--- Di sini kurung siku penutup aslinya baru ditaruh
+                        // ... potongan kode aksi tombol di bawahnya ...
 
                         // --- ACTION BUTTONS ---
                         if (isTerisi && _penyewaData != null)
@@ -465,7 +609,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                   builder: (_) => PenyewaFormScreen(
                                     penyewaData: _penyewaData,
                                     sewaData: _sewaData,
-                                    preselectedKamarId: _sewaData?['id_kamar'] as int? ?? widget.idKamar,
+                                    preselectedKamarId:
+                                        _sewaData?['id_kamar'] as int? ??
+                                        widget.idKamar,
                                     preselectedKamarNomor: widget.nomorKamar,
                                   ),
                                 ),
@@ -484,7 +630,8 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => KamarFormScreen(roomData: _kamarData),
+                                builder: (_) =>
+                                    KamarFormScreen(roomData: _kamarData),
                               ),
                             );
                             _loadData();
@@ -519,8 +666,8 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   }
 
   Widget _buildPenyewaCard() {
-    final nama  = _penyewaData?['nama_lengkap'] ?? '-';
-    final wa    = _penyewaData?['nomor_whatsapp'] ?? '-';
+    final nama = _penyewaData?['nama_lengkap'] ?? '-';
+    final wa = _penyewaData?['nomor_whatsapp'] ?? '-';
     final initial = nama.isNotEmpty ? nama[0].toUpperCase() : 'P';
 
     return Container(
@@ -557,14 +704,25 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
               children: [
                 Text(
                   nama,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.phone_android_outlined, size: 14, color: Colors.grey),
+                    const Icon(
+                      Icons.phone_android_outlined,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(width: 4),
-                    Text(wa, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                    Text(
+                      wa,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
                   ],
                 ),
               ],
@@ -577,20 +735,33 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
   Widget _buildInformasiPribadiCard() {
     final nama = _penyewaData?['nama_lengkap'] ?? '-';
-    final wa   = _penyewaData?['nomor_whatsapp'] ?? '-';
-    final nik  = _penyewaData?['nik'] ?? '-';
+    final wa = _penyewaData?['nomor_whatsapp'] ?? '-';
+    final nik = _penyewaData?['nik'] ?? '-';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Informasi Pribadi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const Text(
+            'Informasi Pribadi',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 16),
           _buildInfoRow('Nama Lengkap', nama, canCopy: false),
           const Divider(height: 24),
@@ -611,7 +782,14 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
         Row(
           children: [
             Expanded(
-              child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
             ),
             if (canCopy)
               GestureDetector(
@@ -625,7 +803,11 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                     ),
                   );
                 },
-                child: Icon(Icons.copy_outlined, size: 18, color: Colors.grey[400]),
+                child: Icon(
+                  Icons.copy_outlined,
+                  size: 18,
+                  color: Colors.grey[400],
+                ),
               ),
           ],
         ),
@@ -642,7 +824,13 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,17 +839,35 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFE0F2F1), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.door_front_door_outlined, color: primaryColor, size: 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2F1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.door_front_door_outlined,
+                  color: primaryColor,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
-              const Text('Kamar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: primaryColor)),
+              const Text(
+                'Kamar',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             widget.nomorKamar,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           Text(
             'Lantai $lantai - $tipe',
@@ -681,7 +887,13 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,19 +902,40 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.login_outlined, color: accentOrange, size: 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.login_outlined,
+                  color: accentOrange,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
-              const Text('Tanggal Masuk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: accentOrange)),
+              const Text(
+                'Tanggal Masuk',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: accentOrange,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             _formatDate(tanggalMasuk),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
-          Text(relative, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+          Text(
+            relative,
+            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+          ),
         ],
       ),
     );
@@ -715,8 +948,12 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
         : null;
     final isOverdue = _isDueDateOverdue(jatuhTempo);
     final statusText = _getDueDateStatus(jatuhTempoStr);
-    final cardColor = isOverdue ? const Color(0xFFFFEBEE) : const Color(0xFFF3E5F5);
-    final iconColor = isOverdue ? const Color(0xFFC62828) : const Color(0xFF7B1FA2);
+    final cardColor = isOverdue
+        ? const Color(0xFFFFEBEE)
+        : const Color(0xFFF3E5F5);
+    final iconColor = isOverdue
+        ? const Color(0xFFC62828)
+        : const Color(0xFF7B1FA2);
     final textColor = isOverdue ? const Color(0xFFC62828) : Colors.black87;
 
     return Container(
@@ -724,7 +961,13 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,20 +976,31 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Icon(Icons.event_outlined, color: iconColor, size: 18),
               ),
               const SizedBox(width: 8),
               Text(
                 'Jatuh Tempo',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: iconColor),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             jatuhTempo != null ? _formatDate(jatuhTempoStr) : '-',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
           ),
           Text(
             statusText,
@@ -770,13 +1024,20 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
           children: [
             const Text(
               'Histori Pembayaran',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
             TextButton(
               onPressed: () {},
               child: const Text(
                 'Lihat Semua',
-                style: TextStyle(color: Color(0xFF00796B), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Color(0xFF00796B),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -791,7 +1052,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Center(
-              child: Text('Belum ada histori pembayaran.', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Belum ada histori pembayaran.',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           )
         else
@@ -799,13 +1063,20 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _historiPembayaran.length,
-              separatorBuilder: (context, _) => const Divider(height: 1, indent: 56, endIndent: 16),
+              separatorBuilder: (context, _) =>
+                  const Divider(height: 1, indent: 56, endIndent: 16),
               itemBuilder: (context, i) {
                 final inv = _historiPembayaran[i];
                 final nominal = inv['total_tagihan'] as num? ?? 0;
@@ -815,7 +1086,10 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                 final isLunas = status == 'Lunas';
 
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Container(
                     width: 40,
                     height: 40,
@@ -823,11 +1097,19 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                       color: const Color(0xFFE0F2F1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.arrow_downward_rounded, color: primaryColor, size: 20),
+                    child: const Icon(
+                      Icons.arrow_downward_rounded,
+                      color: primaryColor,
+                      size: 20,
+                    ),
                   ),
                   title: Text(
                     'Sewa Kamar ${widget.nomorKamar}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
                   subtitle: Text(
                     '$tanggal • $metodeBayar',
@@ -839,13 +1121,21 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                     children: [
                       Text(
                         _formatRupiah(nominal),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: isLunas ? const Color(0xFFE0F2F1) : const Color(0xFFFFF3E0),
+                          color: isLunas
+                              ? const Color(0xFFE0F2F1)
+                              : const Color(0xFFFFF3E0),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -853,7 +1143,9 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: isLunas ? const Color(0xFF00796B) : const Color(0xFFE65100),
+                            color: isLunas
+                                ? const Color(0xFF00796B)
+                                : const Color(0xFFE65100),
                           ),
                         ),
                       ),
@@ -868,13 +1160,22 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   }
 
   Widget _buildKosongCard() {
+    // Ambil token dari data pangkalan data Supabase yang sudah diload
+    final tokenKamar = _kamarData?['kode_kamar'] ?? 'BELUM ADA KODE';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -884,19 +1185,76 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
               color: const Color(0xFFE0F2F1),
               borderRadius: BorderRadius.circular(50),
             ),
-            child: const Icon(Icons.vpn_key_outlined, color: primaryColor, size: 36),
+            child: const Icon(
+              Icons.vpn_key_outlined,
+              color: primaryColor,
+              size: 36,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
             'Kamar Kosong',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Kamar ini belum memiliki penyewa aktif.\nTambahkan penyewa untuk mulai menyewakan.',
+            'Kamar ini belum memiliki penyewa aktif.\nBagikan kode di bawah agar anak kos bisa bergabung.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey[500], height: 1.5),
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+              height: 1.5,
+            ),
           ),
+
+          // ==================== TAMBAHAN KOMPONEN TOKEN BARU ====================
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7F8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  tokenKamar,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(
+                    Icons.copy_outlined,
+                    size: 18,
+                    color: primaryColor,
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: tokenKamar));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Kode kamar berhasil disalin!'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // =====================================================================
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -905,11 +1263,16 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
               icon: const Icon(Icons.person_add_outlined),
-              label: const Text('Tambah Penyewa', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Tambah Penyewa Manual',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               onPressed: () async {
                 await Navigator.push(
                   context,
@@ -945,11 +1308,18 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
           backgroundColor: color,
           foregroundColor: textColor,
           elevation: 0,
-          side: borderColor != null ? BorderSide(color: borderColor, width: 1.5) : BorderSide.none,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: borderColor != null
+              ? BorderSide(color: borderColor, width: 1.5)
+              : BorderSide.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         icon: Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        label: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
         onPressed: onPressed,
       ),
     );
