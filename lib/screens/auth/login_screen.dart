@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'register_screen.dart';
+import 'pilih_role_screen.dart';
 import '../admin/dashboard/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -343,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => const RegisterScreen(),
+                                  builder: (context) => const PilihRoleScreen(),
                                 ),
                               );
                             },

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
+import 'screens/auth/pilih_role_screen.dart';
+import 'screens/auth/register_penghuni_screen.dart';
 import 'screens/admin/dashboard/dashboard_screen.dart';
 
 
@@ -35,6 +37,8 @@ class MyApp extends StatelessWidget {
         '/': (context) => const GerbangUtamaScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
+        '/pilih-role': (context) => const PilihRoleScreen(),
+        '/register-penghuni': (context) => const RegisterPenghuniScreen(),
         '/dashboard': (context) => const DashboardScreen(),
       },
     );
