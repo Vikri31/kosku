@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'dashboard_penghuni_screen.dart';
 import 'detail_tagihan_screen.dart';
 
 class TagihanScreen extends StatelessWidget {
@@ -121,7 +122,7 @@ class TagihanScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const _BottomNav(),
+            const PenghuniBottomNav(currentIndex: 1),
           ],
         ),
       ),
@@ -393,75 +394,3 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  const _BottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 68,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            child: _NavItem(icon: Icons.home_outlined, label: 'Beranda'),
-          ),
-          Expanded(
-            child: _NavItem(
-              icon: Icons.payments_outlined,
-              label: 'Tagihan',
-              selected: true,
-            ),
-          ),
-          Expanded(
-            child: _NavItem(icon: Icons.person_outline, label: 'Profil'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? TagihanScreen._primaryColor
-        : const Color(0xFF6B7280);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}

@@ -5,7 +5,9 @@ import 'screens/auth/register_screen.dart';
 import 'screens/auth/pilih_role_screen.dart';
 import 'screens/auth/register_penghuni_screen.dart';
 import 'screens/admin/dashboard/dashboard_screen.dart';
-
+import 'screens/user/dashboard_penghuni_screen.dart';
+import 'screens/user/tagihan_screen.dart';
+import 'screens/user/lengkapi_data_diri_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,10 +31,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'KosKu Gateway',
       theme: ThemeData(
-        primaryColor: const Color(0xFF004D40), // Diselaraskan dengan warna dasar gelap kehijauan
+        primaryColor: const Color(
+          0xFF004D40,
+        ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
       ),
-      initialRoute: '/',
+      initialRoute: '/dashboard-penghuni',
       routes: {
         '/': (context) => const GerbangUtamaScreen(),
         '/login': (context) => const LoginScreen(),
@@ -40,6 +44,9 @@ class MyApp extends StatelessWidget {
         '/pilih-role': (context) => const PilihRoleScreen(),
         '/register-penghuni': (context) => const RegisterPenghuniScreen(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/dashboard-penghuni': (context) => const DashboardPenghuniScreen(),
+        '/tagihan': (context) => const TagihanScreen(),
+        '/lengkapi-data': (context) => const LengkapiDataDiriScreen(),
       },
     );
   }
