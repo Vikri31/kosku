@@ -8,6 +8,7 @@ import 'screens/admin/dashboard/dashboard_screen.dart';
 import 'screens/user/dashboard_penghuni_screen.dart';
 import 'screens/user/tagihan_screen.dart';
 import 'screens/user/lengkapi_data_diri_screen.dart';
+import 'screens/user/input_kode_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +37,7 @@ class MyApp extends StatelessWidget {
         ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
       ),
-      initialRoute: '/dashboard-penghuni',
+      initialRoute: '/input-kode',
       routes: {
         '/': (context) => const GerbangUtamaScreen(),
         '/login': (context) => const LoginScreen(),
@@ -47,6 +48,7 @@ class MyApp extends StatelessWidget {
         '/dashboard-penghuni': (context) => const DashboardPenghuniScreen(),
         '/tagihan': (context) => const TagihanScreen(),
         '/lengkapi-data': (context) => const LengkapiDataDiriScreen(),
+        '/input-kode': (context) => const InputKodeScreen(),
       },
     );
   }
