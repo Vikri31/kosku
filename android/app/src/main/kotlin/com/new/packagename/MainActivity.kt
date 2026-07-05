@@ -1,4 +1,4 @@
-package com.example.kosku
+package com.new.packagename
 
 import io.flutter.embedding.android.FlutterActivity
 
