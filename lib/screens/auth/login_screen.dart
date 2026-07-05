@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pilih_role_screen.dart';
 import '../admin/dashboard/dashboard_screen.dart';
+import '../user/dashboard_penghuni_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,22 +36,79 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
-      await Supabase.instance.client.auth.signInWithPassword(
+      final client = Supabase.instance.client;
+      final response = await client.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
+      final user = response.user;
+      if (user == null) {
+        throw Exception('Gagal memuat profil pengguna.');
+      }
+
+      // Query database table for role
+      String? role;
+      try {
+        final detail = await client
+            .from('detail_penyewa')
+            .select()
+            .eq('id_user', user.id)
+            .maybeSingle();
+
+        if (detail != null && detail['role'] != null) {
+          role = detail['role'].toString();
+        }
+      } catch (_) {
+        // Suppress and fallback to metadata
+      }
+
+      if (role == null) {
+        final metadata = user.userMetadata;
+        if (metadata != null && metadata['role'] != null) {
+          role = metadata['role'].toString();
+        } else {
+          // If metadata has 'nama_kos', assume they are admin/pemilik
+          if (metadata != null && metadata.containsKey('nama_kos')) {
+            role = 'pemilik';
+          }
+        }
+      }
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login berhasil!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
+        if (role == 'admin' || role == 'pemilik') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login berhasil!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        } else if (role == 'user' || role == 'penghuni') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login berhasil!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardPenghuniScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal mengidentifikasi Role Akun Anda.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -58,6 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text(e.message),
             backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -67,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text('Terjadi kesalahan: $e'),
             backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
