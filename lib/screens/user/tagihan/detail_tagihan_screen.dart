@@ -1,20 +1,273 @@
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'invoice_penghuni_screen.dart';
 
-class DetailTagihanScreen extends StatelessWidget {
-  const DetailTagihanScreen({super.key});
+class DetailTagihanScreen extends StatefulWidget {
+  final Map<String, dynamic> invoice;
+  const DetailTagihanScreen({super.key, required this.invoice});
 
   static const Color _primaryColor = Color(0xFF007461);
   static const Color _backgroundColor = Color(0xFFF4F6F7);
   static const Color _dangerColor = Color(0xFFFF3B30);
 
   @override
+  State<DetailTagihanScreen> createState() => _DetailTagihanScreenState();
+}
+
+class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
+  XFile? _imageFile;
+  bool _isUploading = false;
+  late String _statusPembayaran;
+  String? _buktiTransferUrl;
+
+  String _nomorKamar = '-';
+  String _namaKos = '-';
+
+  @override
+  void initState() {
+    super.initState();
+    _statusPembayaran = widget.invoice['status_pembayaran'] ?? 'BELUM';
+    _buktiTransferUrl = widget.invoice['bukti_transfer_url'];
+    _fetchSewaDetails();
+  }
+
+  Future<void> _fetchSewaDetails() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final sewa = await supabase
+          .from('sewa')
+          .select()
+          .eq('id_sewa', widget.invoice['id_sewa'])
+          .maybeSingle();
+
+      if (sewa != null) {
+        final idKamar = sewa['id_kamar'];
+        final kamar = await supabase
+            .from('kamar')
+            .select()
+            .eq('id_kamar', idKamar)
+            .maybeSingle();
+
+        if (kamar != null) {
+          final String? idAdmin = kamar['id_admin'];
+          if (mounted) {
+            setState(() {
+              _nomorKamar = "Kamar ${kamar['nomor_kamar']}";
+            });
+          }
+
+          if (idAdmin != null) {
+            final admin = await supabase
+                .from('profil_admin')
+                .select()
+                .eq('id_admin', idAdmin)
+                .maybeSingle();
+            if (admin != null && mounted) {
+              setState(() {
+                _namaKos = admin['nama_kost'] ?? '-';
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickImage() async {
+    if (_statusPembayaran == 'Lunas' || _statusPembayaran == 'LUNAS') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tagihan ini sudah lunas!'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      return;
+    }
+
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = pickedFile;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memilih gambar: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _uploadBuktiPembayaran() async {
+    if (_imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan pilih foto struk/bukti transfer terlebih dahulu!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('Pengguna tidak masuk.');
+
+      final String fileExtension = _imageFile!.name.split('.').last.isNotEmpty
+          ? _imageFile!.name.split('.').last
+          : 'jpg';
+      final String fileName = 'bukti_invoice_${widget.invoice['id_invoice']}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+      final String filePath = 'bukti_transfer/$fileName';
+
+      final bytes = await _imageFile!.readAsBytes();
+
+      // Upload ke bucket 'bukti_transfer' menggunakan bytes (Uint8List)
+      await supabase.storage.from('bukti_transfer').uploadBinary(
+        filePath,
+        bytes,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      final String publicUrl = supabase.storage.from('bukti_transfer').getPublicUrl(filePath);
+
+      // Update database invoice
+      await supabase
+          .from('invoice')
+          .update({
+            'bukti_transfer_url': publicUrl,
+            'status_pembayaran': 'Menunggu Verifikasi',
+          })
+          .eq('id_invoice', widget.invoice['id_invoice']);
+
+      if (mounted) {
+        setState(() {
+          _statusPembayaran = 'Menunggu Verifikasi';
+          _buktiTransferUrl = publicUrl;
+          _isUploading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bukti transfer berhasil diunggah! Menunggu verifikasi admin.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pop(context, true);
+      }
+
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunggah bukti: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  String _formatRupiah(dynamic amount) {
+    if (amount == null) return 'Rp 0';
+    final int val = amount is int ? amount : int.parse(amount.toString());
+    final str = val.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        buffer.write('.');
+      }
+    }
+    return "Rp ${buffer.toString().split('').reversed.join('')}";
+  }
+
+  String _getNamaBulan(int month) {
+    const listBulan = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    if (month >= 1 && month <= 12) {
+      return listBulan[month - 1];
+    }
+    return '';
+  }
+
+  String _getBulanSewa(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      return "${_getNamaBulan(date.month)} ${date.year}";
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _getShortBulan(int month) {
+    const listBulan = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    if (month >= 1 && month <= 12) {
+      return listBulan[month - 1];
+    }
+    return '';
+  }
+
+  String _formatTanggal(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      return "${date.day} ${_getShortBulan(date.month)} ${date.year}";
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final bool isPaid = _statusPembayaran == 'Lunas' || _statusPembayaran == 'LUNAS';
+    final bool isPending = _statusPembayaran == 'Menunggu Verifikasi';
+
+    String statusLabel = 'BELUM BAYAR';
+    Color pillBg = const Color(0xFFFFE6E4);
+    Color pillText = DetailTagihanScreen._dangerColor;
+
+    if (isPaid) {
+      statusLabel = 'LUNAS';
+      pillBg = const Color(0xFFDEF7EC);
+      pillText = DetailTagihanScreen._primaryColor;
+    } else if (isPending) {
+      statusLabel = 'MENUNGGU VERIFIKASI';
+      pillBg = const Color(0xFFFEF3C7);
+      pillText = const Color(0xFFD97706);
+    }
+
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: DetailTagihanScreen._backgroundColor,
       appBar: AppBar(
-        backgroundColor: _primaryColor,
+        backgroundColor: DetailTagihanScreen._primaryColor,
         elevation: 0,
         toolbarHeight: 54,
         leading: IconButton(
@@ -38,18 +291,18 @@ class DetailTagihanScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Center(
+              Center(
                 child: _StatusPill(
-                  label: 'BELUM LUNAS',
-                  backgroundColor: Color(0xFFFFE6E4),
-                  textColor: _dangerColor,
+                  label: statusLabel,
+                  backgroundColor: pillBg,
+                  textColor: pillText,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Rp1.500.000',
+              Text(
+                _formatRupiah(widget.invoice['total_tagihan']),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFF1F2933),
                   fontSize: 25,
                   fontWeight: FontWeight.w800,
@@ -66,7 +319,7 @@ class DetailTagihanScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              const _InfoCard(),
+              _buildInfoCard(),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: () {
@@ -77,8 +330,8 @@ class DetailTagihanScreen extends StatelessWidget {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _primaryColor,
-                  side: const BorderSide(color: _primaryColor, width: 1.5),
+                  foregroundColor: DetailTagihanScreen._primaryColor,
+                  side: const BorderSide(color: DetailTagihanScreen._primaryColor, width: 1.5),
                   minimumSize: const Size.fromHeight(42),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
@@ -100,92 +353,114 @@ class DetailTagihanScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFB9C2C8),
-                    width: 1.2,
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFB9C2C8),
+                      width: 1.2,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF4F3),
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: const Icon(
-                        Icons.image_outlined,
-                        color: Color(0xFF8C9AA1),
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Ketuk untuk upload foto struk',
-                      style: TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  child: _imageFile != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _imageFile!.path,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                )
+                              : Image.file(
+                                  io.File(_imageFile!.path),
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                ),
+                        )
+                      : _buktiTransferUrl != null && _buktiTransferUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(7),
+                              child: Image.network(
+                                _buktiTransferUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(child: Icon(Icons.image, size: 40, color: Colors.grey));
+                                },
+                              ),
+                            )
+                          : const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.image_outlined,
+                                  color: Color(0xFF8C9AA1),
+                                  size: 28,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Ketuk untuk upload foto struk',
+                                  style: TextStyle(
+                                    color: Color(0xFF6B7280),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Kirim ke Pemilik',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
+              if (!isPaid && !isPending)
+                _isUploading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+                        onPressed: _uploadBuktiPembayaran,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: DetailTagihanScreen._primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Kirim ke Pemilik',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildInfoCard() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE8ECEF)),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          _InfoRow(label: 'Periode', value: 'Oktober 2023'),
-          _InfoRow(label: 'Tanggal', value: '01 Okt 2023'),
-          _InfoRow(label: 'Kamar', value: 'Room 204'),
-          _InfoRow(label: 'Kos', value: 'Kos Mentari Sejahtera'),
-          _InfoRow(label: 'ID Transaksi', value: '#TRX-20231001-002'),
+          _InfoRow(label: 'Periode', value: _getBulanSewa(widget.invoice['tanggal_dibuat'])),
+          _InfoRow(label: 'Tanggal', value: _formatTanggal(widget.invoice['tanggal_dibuat'])),
+          _InfoRow(label: 'Kamar', value: _nomorKamar),
+          _InfoRow(label: 'Kos', value: _namaKos),
+          _InfoRow(label: 'ID Transaksi', value: widget.invoice['nomor_invoice'] ?? '-'),
         ],
       ),
     );
   }
 }
+
+
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});
