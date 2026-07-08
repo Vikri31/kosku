@@ -1,42 +1,409 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'tagihan_screen.dart';
-import 'profil_penghuni_screen.dart';
+import '../tagihan/tagihan_screen.dart';
+import '../profil/profil_penghuni_screen.dart';
 
 // ── Warna tema KosKu ────────────────────────────────────────────────────────
-const Color _kPrimary    = Color(0xFF1A7C6A);
-const Color _kBg         = Color(0xFFF4F6F7);
-const Color _kDanger     = Color(0xFFFF3B30);
-const Color _kAmber      = Color(0xFFF1B64C);
+const Color _kPrimary = Color(0xFF1A7C6A);
+const Color _kBg = Color(0xFFF4F6F7);
+const Color _kDanger = Color(0xFFFF3B30);
+const Color _kAmber = Color(0xFFF1B64C);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Dashboard Penghuni
 // ═══════════════════════════════════════════════════════════════════════════
-class DashboardPenghuniScreen extends StatelessWidget {
+class DashboardPenghuniScreen extends StatefulWidget {
   const DashboardPenghuniScreen({super.key});
 
-  // ── Data contoh (nanti ganti dengan data dari Supabase) ──────────────────
-  static const String _namaPenghuni = 'Andi';
-  static const String _namaKos      = 'Kos Makmur Jaya';
-  static const String _nomorKamar   = 'A-01';
-  static const String _alamat       =
-      'Jl. Cempaka No. 45, Kecamatan Senen, Jakarta Pusat, DKI Jakarta 10410';
-  static const String _tanggalMasuk = '12 Feb 2023';
-  static const String _jatuhTempo   = '12 Feb 2024';
-  static const String _sisaHari     = '5 Hari';
-  static const bool   _dekatJatuhTempo = true;
-  static const String _nominalTagihan  = 'Rp 1.500.000';
-  static const String _statusTagihan   = 'BELUM';
-  static const String _namaPemilik  = 'Bpk. Haji Ahmad';
-  static const String _noPemilik    = '6281234567890';
+  @override
+  State<DashboardPenghuniScreen> createState() =>
+      _DashboardPenghuniScreenState();
+}
 
-  static const List<Map<String, dynamic>> _tagihan = [
-    {'label': 'Sewa Januari', 'tgl': '12 Jan 2024', 'nominal': 'Rp 1.500.000', 'lunas': true},
-    {'label': 'Sewa Desember', 'tgl': '12 Des 2023', 'nominal': 'Rp 1.500.000', 'lunas': true},
-  ];
+class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  String _namaPenghuni = '-';
+  String _namaKos = 'Memuat kos...';
+  String _nomorKamar = '-';
+  String _alamat = '-';
+  String _tanggalMasuk = '-';
+  String _jatuhTempo = '-';
+  String _sisaHari = '-';
+  bool _dekatJatuhTempo = false;
+  String _nominalTagihan = '-';
+  String _statusTagihan = 'BELUM';
+  String _namaPemilik = '-';
+  String _noPemilik = '';
+  List<Map<String, dynamic>> _tagihan = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+
+      if (user == null) {
+        throw Exception("Pengguna tidak masuk.");
+      }
+
+      // 1. Dapatkan detail_penyewa berdasarkan id_user
+      final detailPenyewa = await supabase
+          .from('detail_penyewa')
+          .select()
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      if (detailPenyewa == null) {
+        setState(() {
+          _namaPenghuni =
+              user.userMetadata?['nama_lengkap'] ??
+              user.email?.split('@').first ??
+              'Penghuni';
+          _namaKos = 'Belum terikat kamar';
+          _nomorKamar = '-';
+          _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
+          _tanggalMasuk = '-';
+          _jatuhTempo = '-';
+          _sisaHari = '-';
+          _dekatJatuhTempo = false;
+          _nominalTagihan = '-';
+          _statusTagihan = 'BELUM';
+          _namaPemilik = '-';
+          _noPemilik = '';
+          _tagihan = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final String nik = detailPenyewa['nik'];
+
+      // 2. Dapatkan data penyewa
+      final penyewa = await supabase
+          .from('penyewa')
+          .select()
+          .eq('nik', nik)
+          .maybeSingle();
+
+      if (penyewa == null) {
+        setState(() {
+          _namaPenghuni =
+              user.userMetadata?['nama_lengkap'] ??
+              user.email?.split('@').first ??
+              'Penghuni';
+          _namaKos = 'Belum terikat kamar';
+          _nomorKamar = '-';
+          _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
+          _tanggalMasuk = '-';
+          _jatuhTempo = '-';
+          _sisaHari = '-';
+          _dekatJatuhTempo = false;
+          _nominalTagihan = '-';
+          _statusTagihan = 'BELUM';
+          _namaPemilik = '-';
+          _noPemilik = '';
+          _tagihan = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final String namaLengkap = penyewa['nama_lengkap'] ?? '-';
+      final String whatsapp = penyewa['nomor_whatsapp'] ?? '';
+      final int idPenyewa = penyewa['id_penyewa'];
+
+      // 3. Dapatkan data sewa aktif
+      final sewa = await supabase
+          .from('sewa')
+          .select()
+          .eq('id_penyewa', idPenyewa)
+          .eq('status_sewa', 'Aktif')
+          .maybeSingle();
+
+      if (sewa == null) {
+        setState(() {
+          _namaPenghuni = namaLengkap;
+          _namaKos = 'Belum terikat kamar';
+          _nomorKamar = '-';
+          _alamat = 'Silakan hubungi pemilik kos atau masukkan kode kamar';
+          _tanggalMasuk = '-';
+          _jatuhTempo = '-';
+          _sisaHari = '-';
+          _dekatJatuhTempo = false;
+          _nominalTagihan = '-';
+          _statusTagihan = 'BELUM';
+          _namaPemilik = '-';
+          _noPemilik = '';
+          _tagihan = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final int idKamar = sewa['id_kamar'];
+      final int idSewa = sewa['id_sewa'];
+      final String tglMasukRaw = sewa['tanggal_masuk'] ?? '';
+
+      String formattedTglMasuk = tglMasukRaw;
+      try {
+        final parsedDate = DateTime.parse(tglMasukRaw);
+        formattedTglMasuk =
+            "${parsedDate.day} ${_getNamaBulan(parsedDate.month)} ${parsedDate.year}";
+      } catch (_) {}
+
+      // 4. Dapatkan data kamar
+      final kamar = await supabase
+          .from('kamar')
+          .select()
+          .eq('id_kamar', idKamar)
+          .maybeSingle();
+
+      if (kamar == null) {
+        setState(() {
+          _namaPenghuni = namaLengkap;
+          _namaKos = 'Kamar tidak ditemukan';
+          _nomorKamar = '-';
+          _alamat = '-';
+          _tanggalMasuk = '-';
+          _jatuhTempo = '-';
+          _sisaHari = '-';
+          _dekatJatuhTempo = false;
+          _nominalTagihan = '-';
+          _statusTagihan = 'BELUM';
+          _namaPemilik = '-';
+          _noPemilik = '';
+          _tagihan = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final String nomorKamar = kamar['nomor_kamar'] ?? '-';
+      final String? idAdmin = kamar['id_admin'];
+
+      // 5. Dapatkan data admin (pemilik kos) jika ada
+      String namaPemilik = '-';
+      String namaKos = 'Kosku';
+      if (idAdmin != null) {
+        final admin = await supabase
+            .from('profil_admin')
+            .select()
+            .eq('id_admin', idAdmin)
+            .maybeSingle();
+
+        if (admin != null) {
+          namaPemilik = admin['nama_lengkap'] ?? '-';
+          namaKos = admin['nama_kost'] ?? 'Kosku';
+        }
+      }
+
+      // 6. Dapatkan tagihan/invoice penyewa
+      final invoices = await supabase
+          .from('invoice')
+          .select()
+          .eq('id_sewa', idSewa)
+          .order('tanggal_dibuat', ascending: false);
+
+      List<Map<String, dynamic>> mappedTagihan = [];
+      String nominalTagihanActive = '-';
+      String statusTagihanActive = 'LUNAS';
+      String jatuhTempoActive = '-';
+      String sisaHariActive = '-';
+      bool dekatJatuhTempoActive = false;
+
+      Map<String, dynamic>? unpaidInvoice;
+      if (invoices.isNotEmpty) {
+        try {
+          unpaidInvoice = invoices.firstWhere(
+            (inv) => inv['status_pembayaran'] != 'LUNAS',
+          );
+        } catch (_) {
+          unpaidInvoice = invoices.first;
+        }
+      }
+
+      if (unpaidInvoice != null) {
+        nominalTagihanActive = _formatRupiah(unpaidInvoice['total_tagihan']);
+        statusTagihanActive = unpaidInvoice['status_pembayaran'] ?? 'BELUM';
+        final String jtRaw = unpaidInvoice['tanggal_jatuh_tempo'] ?? '';
+        try {
+          final jtDate = DateTime.parse(jtRaw);
+          jatuhTempoActive =
+              "${jtDate.day} ${_getNamaBulan(jtDate.month)} ${jtDate.year}";
+          final diff = jtDate.difference(DateTime.now()).inDays;
+          sisaHariActive = "$diff Hari";
+          if (diff <= 7 && diff >= 0) {
+            dekatJatuhTempoActive = true;
+          }
+        } catch (_) {
+          jatuhTempoActive = jtRaw;
+        }
+      }
+
+      for (var inv in invoices) {
+        final bool isLunas = inv['status_pembayaran'] == 'LUNAS';
+        String label =
+            "Sewa ${_getNamaBulanDariTanggal(inv['tanggal_dibuat'])}";
+        String tglStr = "";
+        try {
+          final date = DateTime.parse(inv['tanggal_dibuat']);
+          tglStr = "${date.day} ${_getNamaBulan(date.month)} ${date.year}";
+        } catch (_) {
+          tglStr = inv['tanggal_dibuat'] ?? '';
+        }
+
+        mappedTagihan.add({
+          'label': label,
+          'tgl': tglStr,
+          'nominal': _formatRupiah(inv['total_tagihan']),
+          'lunas': isLunas,
+          'invoice_data': inv,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _namaPenghuni = namaLengkap;
+          _namaKos = namaKos;
+          _nomorKamar = nomorKamar;
+          _alamat = detailPenyewa['alamat_ktp'] ?? '-';
+          _tanggalMasuk = formattedTglMasuk;
+          _jatuhTempo = jatuhTempoActive;
+          _sisaHari = sisaHariActive;
+          _dekatJatuhTempo = dekatJatuhTempoActive;
+          _nominalTagihan = nominalTagihanActive;
+          _statusTagihan = statusTagihanActive;
+          _namaPemilik = namaPemilik;
+          _noPemilik = whatsapp.isNotEmpty ? whatsapp : "6281234567890";
+          _tagihan = mappedTagihan;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _getNamaBulan(int month) {
+    const listBulan = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    if (month >= 1 && month <= 12) {
+      return listBulan[month - 1];
+    }
+    return '';
+  }
+
+  String _getNamaBulanDariTanggal(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      const listBulanFull = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
+      ];
+      return listBulanFull[date.month - 1];
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _formatRupiah(dynamic amount) {
+    if (amount == null) return 'Rp 0';
+    final int val = amount is int ? amount : int.parse(amount.toString());
+    final str = val.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        buffer.write('.');
+      }
+    }
+    return "Rp ${buffer.toString().split('').reversed.join('')}";
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator(color: _kPrimary)),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: _kBg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: _kDanger, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _fetchDashboardData,
+                  style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
+                  child: const Text(
+                    'Coba Lagi',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: _kBg,
       body: Column(
@@ -99,9 +466,9 @@ class DashboardPenghuniScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Halo, $_namaPenghuni',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -112,9 +479,9 @@ class DashboardPenghuniScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   _namaKos,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -170,9 +537,9 @@ class DashboardPenghuniScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           // Nomor Kamar Besar
-          const Text(
+          Text(
             _nomorKamar,
-            style: TextStyle(
+            style: const TextStyle(
               color: _kPrimary,
               fontSize: 40,
               fontWeight: FontWeight.w900,
@@ -198,12 +565,16 @@ class DashboardPenghuniScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF6B7280)),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: Color(0xFF6B7280),
+              ),
               const SizedBox(width: 6),
-              const Expanded(
+              Expanded(
                 child: Text(
                   _alamat,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF374151),
                     fontSize: 12,
                     height: 1.5,
@@ -215,15 +586,16 @@ class DashboardPenghuniScreen extends StatelessWidget {
           const SizedBox(height: 10),
           // Tanggal masuk
           Row(
-            children: const [
-              Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF6B7280)),
-              SizedBox(width: 6),
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: Color(0xFF6B7280),
+              ),
+              const SizedBox(width: 6),
               Text(
                 'Tanggal Masuk: $_tanggalMasuk',
-                style: TextStyle(
-                  color: Color(0xFF374151),
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Color(0xFF374151), fontSize: 12),
               ),
             ],
           ),
@@ -304,9 +676,9 @@ class DashboardPenghuniScreen extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TagihanScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const TagihanScreen())),
               child: const Text(
                 'Lihat Semua',
                 style: TextStyle(
@@ -319,15 +691,17 @@ class DashboardPenghuniScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        ...(_tagihan.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _TagihanItem(
-            label: item['label'] as String,
-            tgl: item['tgl'] as String,
-            nominal: item['nominal'] as String,
-            lunas: item['lunas'] as bool,
+        ...(_tagihan.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _TagihanItem(
+              label: item['label'] as String,
+              tgl: item['tgl'] as String,
+              nominal: item['nominal'] as String,
+              lunas: item['lunas'] as bool,
+            ),
           ),
-        ))),
+        )),
       ],
     );
   }
@@ -362,8 +736,8 @@ class DashboardPenghuniScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'PEMILIK KOS',
                     style: TextStyle(
                       color: Colors.white70,
@@ -372,10 +746,10 @@ class DashboardPenghuniScreen extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     _namaPemilik,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -617,7 +991,7 @@ class PenghuniBottomNav extends StatelessWidget {
   /// 0 = Beranda, 1 = Tagihan, 2 = Profil
   final int currentIndex;
 
-  static const Color _active   = Color(0xFF1A7C6A);
+  static const Color _active = Color(0xFF1A7C6A);
   static const Color _inactive = Color(0xFF9CA3AF);
 
   @override
@@ -695,7 +1069,9 @@ class _NavBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? PenghuniBottomNav._active : PenghuniBottomNav._inactive;
+    final color = active
+        ? PenghuniBottomNav._active
+        : PenghuniBottomNav._inactive;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,

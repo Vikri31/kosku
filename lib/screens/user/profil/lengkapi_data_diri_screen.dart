@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +15,7 @@ class LengkapiDataDiriScreen extends StatefulWidget {
 
 class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final _namaController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -23,11 +24,11 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
 
   // State variables
   DateTime? _selectedDate;
-  File? _profileImage;
-  File? _ktpImage;
+  XFile? _profileImage;
+  XFile? _ktpImage;
   String? _existingProfileUrl;
   String? _existingKtpUrl;
-  
+
   bool _isLoading = false;
   bool _isDataLoaded = false;
   bool _isNikDisabled = false;
@@ -128,7 +129,8 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                   _selectedDate = DateTime.tryParse(tglStr);
                 }
                 if (detailByNik['foto_profil_url'] != null) {
-                  _existingProfileUrl = detailByNik['foto_profil_url'].toString();
+                  _existingProfileUrl = detailByNik['foto_profil_url']
+                      .toString();
                 }
                 if (detailByNik['foto_ktp_url'] != null) {
                   _existingKtpUrl = detailByNik['foto_ktp_url'].toString();
@@ -157,7 +159,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       );
       if (image != null) {
         setState(() {
-          _profileImage = File(image.path);
+          _profileImage = image;
         });
       }
     } catch (e) {
@@ -173,7 +175,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       );
       if (image != null) {
         setState(() {
-          _ktpImage = File(image.path);
+          _ktpImage = image;
         });
       }
     } catch (e) {
@@ -186,7 +188,9 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
     final DateTime now = DateTime.now();
     final DateTime initial = _selectedDate ?? DateTime(2000, 1, 1);
     final DateTime firstDate = DateTime(1940);
-    final DateTime lastDate = DateTime(now.year - 15); // Must be at least 15 years old
+    final DateTime lastDate = DateTime(
+      now.year - 15,
+    ); // Must be at least 15 years old
 
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -216,18 +220,29 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
   }
 
   // --- Supabase Upload Helper ---
-  Future<String?> _uploadFileToSupabase(File file, String prefix) async {
+  Future<String?> _uploadFileToSupabase(XFile file, String prefix) async {
     try {
       final client = Supabase.instance.client;
-      final fileExt = path.extension(file.path);
-      final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExt';
+      final fileExt = path.extension(file.name);
+      final fileName =
+          '${prefix}_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExt';
       final uploadPath = 'uploads/$fileName';
 
+      final bytes = await file.readAsBytes();
+
       // Upload file to the 'foto_kamar' bucket (or fallback bucket)
-      await client.storage.from('foto_kamar').upload(uploadPath, file);
-      
+      await client.storage
+          .from('foto_kamar')
+          .uploadBinary(
+            uploadPath,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+
       // Get public URL
-      final publicUrl = client.storage.from('foto_kamar').getPublicUrl(uploadPath);
+      final publicUrl = client.storage
+          .from('foto_kamar')
+          .getPublicUrl(uploadPath);
       return publicUrl;
     } catch (e) {
       debugPrint('Storage upload error (will fallback to empty or local): $e');
@@ -299,10 +314,13 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
             .maybeSingle();
 
         if (existingPenyewa != null) {
-          await client.from('penyewa').update({
-            'nama_lengkap': namaLengkap,
-            'nomor_whatsapp': nomorWhatsapp,
-          }).eq('nik', nik);
+          await client
+              .from('penyewa')
+              .update({
+                'nama_lengkap': namaLengkap,
+                'nomor_whatsapp': nomorWhatsapp,
+              })
+              .eq('nik', nik);
         } else {
           await client.from('penyewa').insert({
             'nik': nik,
@@ -360,9 +378,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
     if (!_isDataLoaded && _isLoading) {
       return const Scaffold(
         backgroundColor: _kBg,
-        body: Center(
-          child: CircularProgressIndicator(color: _kPrimary),
-        ),
+        body: Center(child: CircularProgressIndicator(color: _kPrimary)),
       );
     }
 
@@ -373,7 +389,11 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 18,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
@@ -405,7 +425,10 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white,
-                            border: Border.all(color: _kPrimary.withValues(alpha: 0.3), width: 3),
+                            border: Border.all(
+                              color: _kPrimary.withValues(alpha: 0.3),
+                              width: 3,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.05),
@@ -417,12 +440,25 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                           child: CircleAvatar(
                             backgroundColor: Colors.transparent,
                             backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
-                                : (_existingProfileUrl != null && _existingProfileUrl!.isNotEmpty
-                                    ? NetworkImage(_existingProfileUrl!)
-                                    : null) as ImageProvider?,
-                            child: _profileImage == null && (_existingProfileUrl == null || _existingProfileUrl!.isEmpty)
-                                ? const Icon(Icons.person, size: 54, color: _kPrimary)
+                                ? (kIsWeb
+                                          ? NetworkImage(_profileImage!.path)
+                                          : FileImage(
+                                              io.File(_profileImage!.path),
+                                            ))
+                                      as ImageProvider
+                                : (_existingProfileUrl != null &&
+                                          _existingProfileUrl!.isNotEmpty
+                                      ? NetworkImage(_existingProfileUrl!)
+                                      : null),
+                            child:
+                                _profileImage == null &&
+                                    (_existingProfileUrl == null ||
+                                        _existingProfileUrl!.isEmpty)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 54,
+                                    color: _kPrimary,
+                                  )
                                 : null,
                           ),
                         ),
@@ -557,18 +593,27 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: CustomPaint(
-                      painter: DashedBorderPainter(color: _kPrimary.withValues(alpha: 0.5)),
+                      painter: DashedBorderPainter(
+                        color: _kPrimary.withValues(alpha: 0.5),
+                      ),
                       child: _ktpImage != null
                           ? Stack(
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(
-                                    _ktpImage!,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: kIsWeb
+                                      ? Image.network(
+                                          _ktpImage!.path,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          io.File(_ktpImage!.path),
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          fit: BoxFit.cover,
+                                        ),
                                 ),
                                 Container(
                                   decoration: BoxDecoration(
@@ -579,7 +624,11 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.edit, color: Colors.white, size: 18),
+                                        Icon(
+                                          Icons.edit,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
                                         SizedBox(width: 8),
                                         Text(
                                           'Ubah Foto KTP',
@@ -595,72 +644,82 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                                 ),
                               ],
                             )
-                          : (_existingKtpUrl != null && _existingKtpUrl!.isNotEmpty
-                              ? Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
-                                        _existingKtpUrl!,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        color: Colors.black.withValues(alpha: 0.3),
-                                      ),
-                                      child: const Center(
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.edit, color: Colors.white, size: 18),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Ubah Foto KTP',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                          : (_existingKtpUrl != null &&
+                                    _existingKtpUrl!.isNotEmpty
+                                ? Stack(
                                     children: [
-                                      Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                        size: 40,
-                                        color: _kPrimary,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Upload Foto KTP',
-                                        style: TextStyle(
-                                          color: _kPrimary,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          _existingKtpUrl!,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          fit: BoxFit.cover,
                                         ),
                                       ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Format JPG/PNG, ukuran maks 5MB',
-                                        style: TextStyle(
-                                          color: _kTextMuted,
-                                          fontSize: 11,
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                        child: const Center(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.edit,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Ubah Foto KTP',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
-                                  ),
-                                )),
+                                  )
+                                : const Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate_outlined,
+                                          size: 40,
+                                          color: _kPrimary,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Upload Foto KTP',
+                                          style: TextStyle(
+                                            color: _kPrimary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Format JPG/PNG, ukuran maks 5MB',
+                                          style: TextStyle(
+                                            color: _kTextMuted,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )),
                     ),
                   ),
                 ),
@@ -672,7 +731,10 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF9E6),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFFFE6A3), width: 1),
+                    border: Border.all(
+                      color: const Color(0xFFFFE6A3),
+                      width: 1,
+                    ),
                   ),
                   child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,18 +832,29 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
               fontSize: 13,
               fontWeight: FontWeight.normal,
             ),
-            prefixIcon: Icon(icon, color: enabled ? _kPrimary : _kTextMuted, size: 18),
+            prefixIcon: Icon(
+              icon,
+              color: enabled ? _kPrimary : _kTextMuted,
+              size: 18,
+            ),
             counterText: '',
             filled: true,
             fillColor: enabled ? Colors.white : const Color(0xFFEBEFF1),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+              borderSide: BorderSide(
+                color: Colors.black.withValues(alpha: 0.08),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+              borderSide: BorderSide(
+                color: Colors.black.withValues(alpha: 0.08),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -789,7 +862,9 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+              borderSide: BorderSide(
+                color: Colors.black.withValues(alpha: 0.05),
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

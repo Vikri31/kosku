@@ -5,10 +5,10 @@ import 'screens/auth/register_screen.dart';
 import 'screens/auth/pilih_role_screen.dart';
 import 'screens/auth/register_penghuni_screen.dart';
 import 'screens/admin/dashboard/dashboard_screen.dart';
-import 'screens/user/dashboard_penghuni_screen.dart';
-import 'screens/user/tagihan_screen.dart';
-import 'screens/user/lengkapi_data_diri_screen.dart';
-import 'screens/user/input_kode_screen.dart';
+import 'screens/user/dashboard/dashboard_penghuni_screen.dart';
+import 'screens/user/tagihan/tagihan_screen.dart';
+import 'screens/user/profil/lengkapi_data_diri_screen.dart';
+import 'screens/user/join/input_kode_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
       ),
-      initialRoute: '/input-kode',
+      initialRoute: '/',
       routes: {
         '/': (context) => const GerbangUtamaScreen(),
         '/login': (context) => const LoginScreen(),

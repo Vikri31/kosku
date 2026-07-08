@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'dashboard_penghuni_screen.dart';
+import '../dashboard/dashboard_penghuni_screen.dart';
 import 'detail_tagihan_screen.dart';
 
 class TagihanScreen extends StatelessWidget {

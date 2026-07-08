@@ -21,7 +21,7 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
   static const Color _kBg = Color(0xFFF4F6F7);
   static const Color _kTextDark = Color(0xFF1F2933);
   static const Color _kTextMuted = Color(0xFF6B7280);
-  
+
   // Default fallback whatsapp link if no admin contact is configured
   static const String _fallbackAdminWa = '6281234567890';
 
@@ -33,18 +33,16 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
 
   // --- Helper to convert all inputs to uppercase ---
   List<TextInputFormatter> get _codeFormatters => [
-        TextInputFormatter.withFunction((oldValue, newValue) {
-          return newValue.copyWith(
-            text: newValue.text.toUpperCase(),
-          );
-        }),
-        LengthLimitingTextInputFormatter(20), // Sensible code length limit
-      ];
+    TextInputFormatter.withFunction((oldValue, newValue) {
+      return newValue.copyWith(text: newValue.text.toUpperCase());
+    }),
+    LengthLimitingTextInputFormatter(20), // Sensible code length limit
+  ];
 
   // --- Submit Code Flow ---
   Future<void> _submitCode() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
 
@@ -55,7 +53,9 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
       final user = supabase.auth.currentUser;
 
       if (user == null) {
-        throw Exception('Pengguna tidak terautentikasi. Silakan login kembali.');
+        throw Exception(
+          'Pengguna tidak terautentikasi. Silakan login kembali.',
+        );
       }
 
       // 1. Check if room exists with this code
@@ -143,7 +143,6 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
       if (mounted) {
         _showSuccessDialog(nomorKamar);
       }
-
     } catch (e) {
       if (mounted) {
         _showSnackBar('Terjadi kesalahan: $e', isError: true);
@@ -215,14 +214,21 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
           content: Text(
             'Anda saat ini masih terdaftar aktif di Kamar $currentRoom. '
             'Menghubungkan ke Kamar $newRoom akan menonaktifkan sewa aktif dan akses Anda di Kamar $currentRoom.\n\nApakah Anda yakin ingin melanjutkan?',
-            style: const TextStyle(fontSize: 14, height: 1.5, color: _kTextDark),
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: _kTextDark,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: const Text(
                 'Batal',
-                style: TextStyle(color: _kTextMuted, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: _kTextMuted,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             ElevatedButton(
@@ -334,7 +340,10 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Gagal menghubungi Admin: WhatsApp tidak tersedia.', isError: true);
+        _showSnackBar(
+          'Gagal menghubungi Admin: WhatsApp tidak tersedia.',
+          isError: true,
+        );
       }
     }
   }
@@ -377,7 +386,10 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   minHeight: constraints.maxHeight - 32.0,
