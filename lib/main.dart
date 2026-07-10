@@ -11,17 +11,33 @@ import 'screens/user/tagihan/tagihan_screen.dart';
 import 'screens/user/profil/lengkapi_data_diri_screen.dart';
 import 'screens/user/join/input_kode_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi Supabase menggunakan URL project kelompok
-  await Supabase.initialize(
-    url: 'https://lscrtjygvlamygonwihn.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A',
-  );
+  try {
+    await Supabase.initialize(
+      url: 'https://lscrtjygvlamygonwihn.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A',
+    );
 
-  runApp(const MyApp());
+    runApp(const MyApp());
+  } catch (e) {
+    runApp(const StartupErrorApp());
+  }
+}
+
+class StartupErrorApp extends StatelessWidget {
+  const StartupErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Gagal menghubungkan aplikasi ke Supabase.')),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -70,6 +86,7 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   Session? _currentSession;
   bool _isLoading = true;
+  Future<String?>? _roleFuture;
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
@@ -83,8 +100,10 @@ class _AuthGateState extends State<AuthGate> {
 
   void _checkInitialSession() {
     final session = Supabase.instance.client.auth.currentSession;
+
     setState(() {
       _currentSession = session;
+      _roleFuture = session == null ? null : _getUserRole(session.user);
       _isLoading = false;
     });
   }
@@ -93,11 +112,14 @@ class _AuthGateState extends State<AuthGate> {
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       data,
     ) {
-      if (mounted) {
-        setState(() {
-          _currentSession = data.session;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _currentSession = data.session;
+        _roleFuture = data.session == null
+            ? null
+            : _getUserRole(data.session!.user);
+      });
     });
   }
 
@@ -127,7 +149,7 @@ class _AuthGateState extends State<AuthGate> {
     final user = _currentSession!.user;
 
     return FutureBuilder<String?>(
-      future: _getUserRole(user),
+      future: _roleFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -146,6 +168,10 @@ class _AuthGateState extends State<AuthGate> {
               ),
             ),
           );
+        }
+
+        if (snapshot.hasError) {
+          return const LoginScreen();
         }
 
         final role = snapshot.data;
