@@ -5,10 +5,10 @@ import '../tagihan/tagihan_screen.dart';
 import '../profil/profil_penghuni_screen.dart';
 
 // ── Warna tema KosKu ────────────────────────────────────────────────────────
-const Color _kPrimary    = Color(0xFF1A7C6A);
-const Color _kBg         = Color(0xFFF4F6F7);
-const Color _kDanger     = Color(0xFFFF3B30);
-const Color _kAmber      = Color(0xFFF1B64C);
+const Color _kPrimary = Color(0xFF1A7C6A);
+const Color _kBg = Color(0xFFF4F6F7);
+const Color _kDanger = Color(0xFFFF3B30);
+const Color _kAmber = Color(0xFFF1B64C);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Dashboard Penghuni
@@ -17,7 +17,8 @@ class DashboardPenghuniScreen extends StatefulWidget {
   const DashboardPenghuniScreen({super.key});
 
   @override
-  State<DashboardPenghuniScreen> createState() => _DashboardPenghuniScreenState();
+  State<DashboardPenghuniScreen> createState() =>
+      _DashboardPenghuniScreenState();
 }
 
 class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
@@ -67,7 +68,10 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
       if (detailPenyewa == null) {
         setState(() {
-          _namaPenghuni = user.userMetadata?['nama_lengkap'] ?? user.email?.split('@').first ?? 'Penghuni';
+          _namaPenghuni =
+              user.userMetadata?['nama_lengkap'] ??
+              user.email?.split('@').first ??
+              'Penghuni';
           _namaKos = 'Belum terikat kamar';
           _nomorKamar = '-';
           _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
@@ -96,7 +100,10 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
       if (penyewa == null) {
         setState(() {
-          _namaPenghuni = user.userMetadata?['nama_lengkap'] ?? user.email?.split('@').first ?? 'Penghuni';
+          _namaPenghuni =
+              user.userMetadata?['nama_lengkap'] ??
+              user.email?.split('@').first ??
+              'Penghuni';
           _namaKos = 'Belum terikat kamar';
           _nomorKamar = '-';
           _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
@@ -153,7 +160,8 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       String formattedTglMasuk = tglMasukRaw;
       try {
         final parsedDate = DateTime.parse(tglMasukRaw);
-        formattedTglMasuk = "${parsedDate.day} ${_getNamaBulan(parsedDate.month)} ${parsedDate.year}";
+        formattedTglMasuk =
+            "${parsedDate.day} ${_getNamaBulan(parsedDate.month)} ${parsedDate.year}";
       } catch (_) {}
 
       // 4. Dapatkan data kamar
@@ -233,7 +241,8 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
         final String jtRaw = unpaidInvoice['tanggal_jatuh_tempo'] ?? '';
         try {
           final jtDate = DateTime.parse(jtRaw);
-          jatuhTempoActive = "${jtDate.day} ${_getNamaBulan(jtDate.month)} ${jtDate.year}";
+          jatuhTempoActive =
+              "${jtDate.day} ${_getNamaBulan(jtDate.month)} ${jtDate.year}";
           final diff = jtDate.difference(DateTime.now()).inDays;
           sisaHariActive = "$diff Hari";
           if (diff <= 7 && diff >= 0) {
@@ -246,7 +255,8 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
       for (var inv in invoices) {
         final bool isLunas = inv['status_pembayaran'] == 'LUNAS';
-        String label = "Sewa ${_getNamaBulanDariTanggal(inv['tanggal_dibuat'])}";
+        String label =
+            "Sewa ${_getNamaBulanDariTanggal(inv['tanggal_dibuat'])}";
         String tglStr = "";
         try {
           final date = DateTime.parse(inv['tanggal_dibuat']);
@@ -282,7 +292,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _isLoading = false;
         });
       }
-
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -295,8 +304,18 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
   String _getNamaBulan(int month) {
     const listBulan = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     if (month >= 1 && month <= 12) {
       return listBulan[month - 1];
@@ -309,8 +328,18 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
     try {
       final date = DateTime.parse(dateStr);
       const listBulanFull = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
       ];
       return listBulanFull[date.month - 1];
     } catch (_) {
@@ -339,9 +368,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: _kBg,
-        body: Center(
-          child: CircularProgressIndicator(color: _kPrimary),
-        ),
+        body: Center(child: CircularProgressIndicator(color: _kPrimary)),
       );
     }
 
@@ -365,7 +392,10 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
                 ElevatedButton(
                   onPressed: _fetchDashboardData,
                   style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-                  child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    'Coba Lagi',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
@@ -535,7 +565,11 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF6B7280)),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: Color(0xFF6B7280),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -550,17 +584,17 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          // Tanggal masuk
           Row(
             children: [
-              const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF6B7280)),
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: Color(0xFF6B7280),
+              ),
               const SizedBox(width: 6),
               Text(
                 'Tanggal Masuk: $_tanggalMasuk',
-                style: const TextStyle(
-                  color: Color(0xFF374151),
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Color(0xFF374151), fontSize: 12),
               ),
             ],
           ),
@@ -641,9 +675,9 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               ),
             ),
             GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TagihanScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const TagihanScreen())),
               child: const Text(
                 'Lihat Semua',
                 style: TextStyle(
@@ -656,15 +690,17 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        ...(_tagihan.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _TagihanItem(
-            label: item['label'] as String,
-            tgl: item['tgl'] as String,
-            nominal: item['nominal'] as String,
-            lunas: item['lunas'] as bool,
+        ...(_tagihan.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _TagihanItem(
+              label: item['label'] as String,
+              tgl: item['tgl'] as String,
+              nominal: item['nominal'] as String,
+              lunas: item['lunas'] as bool,
+            ),
           ),
-        ))),
+        )),
       ],
     );
   }
@@ -954,7 +990,7 @@ class PenghuniBottomNav extends StatelessWidget {
   /// 0 = Beranda, 1 = Tagihan, 2 = Profil
   final int currentIndex;
 
-  static const Color _active   = Color(0xFF1A7C6A);
+  static const Color _active = Color(0xFF1A7C6A);
   static const Color _inactive = Color(0xFF9CA3AF);
 
   @override
@@ -1032,7 +1068,9 @@ class _NavBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? PenghuniBottomNav._active : PenghuniBottomNav._inactive;
+    final color = active
+        ? PenghuniBottomNav._active
+        : PenghuniBottomNav._inactive;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,

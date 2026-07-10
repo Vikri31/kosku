@@ -10,6 +10,10 @@ import 'screens/user/dashboard/dashboard_penghuni_screen.dart';
 import 'screens/user/tagihan/tagihan_screen.dart';
 import 'screens/user/profil/lengkapi_data_diri_screen.dart';
 import 'screens/user/join/input_kode_screen.dart';
+import 'screens/user/dashboard/dashboard_penghuni_screen.dart';
+import 'screens/user/tagihan/tagihan_screen.dart';
+import 'screens/user/profil/lengkapi_data_diri_screen.dart';
+import 'screens/user/join/input_kode_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

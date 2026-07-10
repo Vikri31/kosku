@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/dashboard_penghuni_screen.dart';
 
 const Color _kPrimary = Color(0xFF1A7C6A);
-const Color _kBg      = Color(0xFFF4F6F7);
+const Color _kBg = Color(0xFFF4F6F7);
 
 class ProfilPenghuniScreen extends StatefulWidget {
   const ProfilPenghuniScreen({super.key});
@@ -14,14 +14,14 @@ class ProfilPenghuniScreen extends StatefulWidget {
 
 class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
   // ── State Data ──────────────────────────────────────────────────────────
-  String _namaPenghuni  = '-';
+  String _namaPenghuni = '-';
   String _namaKos = 'Belum terikat kos';
-  String _nomorKamar    = '-';
+  String _nomorKamar = '-';
   String _statusTagihan = '-';
-  bool _statusLunas   = true;
+  bool _statusLunas = true;
   String? _avatarUrl;
   bool _isDataLengkap = false;
-  
+
   static const String _appVersion = '1.0.0 (Stable)';
 
   @override
@@ -40,7 +40,10 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
       if (user != null) {
         // Reset defaults first
-        _namaPenghuni = user.userMetadata?['nama_lengkap'] ?? user.email?.split('@').first ?? '-';
+        _namaPenghuni =
+            user.userMetadata?['nama_lengkap'] ??
+            user.email?.split('@').first ??
+            '-';
         _namaKos = 'Belum terikat kos';
         _nomorKamar = '-';
         _statusTagihan = '-';
@@ -93,7 +96,6 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
                 if (kamar != null) {
                   _nomorKamar = 'Kamar ${kamar['nomor_kamar']}';
-                  
                   final String? idAdmin = kamar['id_admin'];
                   if (idAdmin != null) {
                     final admin = await client
@@ -114,7 +116,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                     .eq('id_sewa', idSewa);
 
                 if (invoices.isNotEmpty) {
-                  final hasUnpaid = invoices.any((inv) => inv['status_pembayaran'] != 'LUNAS');
+                  final hasUnpaid = invoices.any(
+                    (inv) => inv['status_pembayaran'] != 'LUNAS',
+                  );
                   if (hasUnpaid) {
                     _statusLunas = false;
                     _statusTagihan = 'Belum Lunas';
@@ -233,7 +237,10 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFFE8F5F2),
-                  border: Border.all(color: _kPrimary.withValues(alpha: 0.3), width: 2.5),
+                  border: Border.all(
+                    color: _kPrimary.withValues(alpha: 0.3),
+                    width: 2.5,
+                  ),
                 ),
                 child: ClipOval(
                   child: _avatarUrl != null && _avatarUrl!.isNotEmpty
@@ -243,7 +250,11 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                           height: 90,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.person, size: 50, color: _kPrimary);
+                            return const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: _kPrimary,
+                            );
                           },
                         )
                       : const Icon(Icons.person, size: 50, color: _kPrimary),
@@ -254,7 +265,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                 bottom: 0,
                 child: GestureDetector(
                   onTap: () async {
-                    final result = await Navigator.of(context).pushNamed('/lengkapi-data');
+                    final result = await Navigator.of(
+                      context,
+                    ).pushNamed('/lengkapi-data');
                     if (result == true) {
                       _loadProfileData();
                     }
@@ -266,7 +279,11 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                       color: _kPrimary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.edit, size: 14, color: Colors.white),
+                    child: const Icon(
+                      Icons.edit,
+                      size: 14,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -284,10 +301,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
           const SizedBox(height: 4),
           Text(
             _namaKos,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF6B7280),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 20),
           // Info kamar & status
@@ -304,8 +318,12 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
               Expanded(
                 child: _InfoBox(
                   label: 'Status Tagihan',
-                  value: _statusLunas ? '● $_statusTagihan' : '● $_statusTagihan',
-                  valueColor: _statusLunas ? _kPrimary : const Color(0xFFFF3B30),
+                  value: _statusLunas
+                      ? '● $_statusTagihan'
+                      : '● $_statusTagihan',
+                  valueColor: _statusLunas
+                      ? _kPrimary
+                      : const Color(0xFFFF3B30),
                 ),
               ),
             ],
@@ -329,7 +347,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFFFFAEB),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF1B64C).withValues(alpha: 0.5)),
+          border: Border.all(
+            color: const Color(0xFFF1B64C).withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
           children: [
@@ -395,7 +415,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         label: 'Lengkap Data Diri',
         badge: _isDataLengkap ? null : '1',
         onTap: () async {
-          final result = await Navigator.of(context).pushNamed('/lengkapi-data');
+          final result = await Navigator.of(
+            context,
+          ).pushNamed('/lengkapi-data');
           if (result == true) {
             _loadProfileData();
           }
@@ -418,9 +440,11 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(_nomorKamar == '-'
-                  ? 'Anda belum terdaftar di kamar manapun.'
-                  : 'Anda terdaftar di $_nomorKamar - $_namaKos'),
+              content: Text(
+                _nomorKamar == '-'
+                    ? 'Anda belum terdaftar di kamar manapun.'
+                    : 'Anda terdaftar di $_nomorKamar - $_namaKos',
+              ),
             ),
           );
         },
@@ -433,9 +457,15 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
             context: context,
             applicationName: 'KosKu',
             applicationVersion: _appVersion,
-            applicationIcon: const Icon(Icons.home_work, color: _kPrimary, size: 40),
+            applicationIcon: const Icon(
+              Icons.home_work,
+              color: _kPrimary,
+              size: 40,
+            ),
             children: const [
-              Text('Aplikasi pengelolaan kos kelompok mahasiswa Pemrograman Mobile.'),
+              Text(
+                'Aplikasi pengelolaan kos kelompok mahasiswa Pemrograman Mobile.',
+              ),
             ],
           );
         },
@@ -456,13 +486,18 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
       ),
       child: Column(
         children: menus.asMap().entries.map((entry) {
-          final idx  = entry.key;
+          final idx = entry.key;
           final menu = entry.value;
           return Column(
             children: [
               _MenuTile(menu: menu),
               if (idx < menus.length - 1)
-                const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF0F0F0)),
+                const Divider(
+                  height: 1,
+                  indent: 56,
+                  endIndent: 16,
+                  color: Color(0xFFF0F0F0),
+                ),
             ],
           );
         }).toList(),
@@ -478,7 +513,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Color(0xFFFF3B30), width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         onPressed: () {},
         icon: const Icon(Icons.exit_to_app, color: Color(0xFFFF3B30), size: 18),
@@ -503,13 +540,17 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFB91C1C),
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         onPressed: () async {
           await Supabase.instance.client.auth.signOut();
           if (context.mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/login', (r) => false);
           }
         },
         icon: const Icon(Icons.logout, size: 18),
@@ -559,7 +600,12 @@ class _InfoBox extends StatelessWidget {
 }
 
 class _MenuItem {
-  const _MenuItem({required this.icon, required this.label, this.badge, this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    this.badge,
+    this.onTap,
+  });
   final IconData icon;
   final String label;
   final String? badge;
@@ -622,7 +668,11 @@ class _MenuTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
               ],
-              const Icon(Icons.chevron_right, color: Color(0xFFD1D5DB), size: 20),
+              const Icon(
+                Icons.chevron_right,
+                color: Color(0xFFD1D5DB),
+                size: 20,
+              ),
             ],
           ),
         ),
