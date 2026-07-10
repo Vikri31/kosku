@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dashboard_penghuni_screen.dart';
+import '../dashboard/dashboard_penghuni_screen.dart';
 
 const Color _kPrimary = Color(0xFF1A7C6A);
 const Color _kBg      = Color(0xFFF4F6F7);
@@ -14,11 +14,11 @@ class ProfilPenghuniScreen extends StatefulWidget {
 
 class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
   // ── State Data ──────────────────────────────────────────────────────────
-  String _namaPenghuni  = 'Budi Santoso';
-  final String _namaKos       = 'Pemilik Kos Makmur Jaya';
-  String _nomorKamar    = 'Kamar 204';
-  final String _statusTagihan = 'Lunas';
-  final bool _statusLunas   = true;
+  String _namaPenghuni  = '-';
+  String _namaKos = 'Belum terikat kos';
+  String _nomorKamar    = '-';
+  String _statusTagihan = '-';
+  bool _statusLunas   = true;
   String? _avatarUrl;
   bool _isDataLengkap = false;
   
@@ -39,11 +39,15 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
       final user = client.auth.currentUser;
 
       if (user != null) {
-        // 1. Get name from metadata
+        // Reset defaults first
+        _namaPenghuni = user.userMetadata?['nama_lengkap'] ?? user.email?.split('@').first ?? '-';
+        _namaKos = 'Belum terikat kos';
+        _nomorKamar = '-';
+        _statusTagihan = '-';
+        _statusLunas = true;
+        _isDataLengkap = false;
+
         if (user.userMetadata != null) {
-          if (user.userMetadata!['nama_lengkap'] != null) {
-            _namaPenghuni = user.userMetadata!['nama_lengkap'].toString();
-          }
           _isDataLengkap = user.userMetadata!['data_lengkap'] == true;
         }
 
@@ -55,6 +59,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
             .maybeSingle();
 
         if (detail != null) {
+          _isDataLengkap = true;
           if (detail['foto_profil_url'] != null) {
             _avatarUrl = detail['foto_profil_url'];
           }
@@ -68,6 +73,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                 .maybeSingle();
 
             if (penyewa != null) {
+              _namaPenghuni = penyewa['nama_lengkap'] ?? _namaPenghuni;
               final idPenyewa = penyewa['id_penyewa'];
               final sewa = await client
                   .from('sewa')
@@ -78,6 +84,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
               if (sewa != null) {
                 final idKamar = sewa['id_kamar'];
+                final idSewa = sewa['id_sewa'];
                 final kamar = await client
                     .from('kamar')
                     .select()
@@ -86,6 +93,38 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
                 if (kamar != null) {
                   _nomorKamar = 'Kamar ${kamar['nomor_kamar']}';
+                  
+                  final String? idAdmin = kamar['id_admin'];
+                  if (idAdmin != null) {
+                    final admin = await client
+                        .from('profil_admin')
+                        .select()
+                        .eq('id_admin', idAdmin)
+                        .maybeSingle();
+                    if (admin != null) {
+                      _namaKos = admin['nama_kost'] ?? 'Kosku';
+                    }
+                  }
+                }
+
+                // Check invoice status
+                final invoices = await client
+                    .from('invoice')
+                    .select()
+                    .eq('id_sewa', idSewa);
+
+                if (invoices.isNotEmpty) {
+                  final hasUnpaid = invoices.any((inv) => inv['status_pembayaran'] != 'LUNAS');
+                  if (hasUnpaid) {
+                    _statusLunas = false;
+                    _statusTagihan = 'Belum Lunas';
+                  } else {
+                    _statusLunas = true;
+                    _statusTagihan = 'Lunas';
+                  }
+                } else {
+                  _statusLunas = true;
+                  _statusTagihan = 'Tidak Ada Tagihan';
                 }
               }
             }
@@ -362,10 +401,45 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
           }
         },
       ),
-      _MenuItem(icon: Icons.info_outline,           label: 'Info Kamar Saya'),
-      _MenuItem(icon: Icons.lock_reset_outlined,    label: 'Ganti Kode Kos'),
-      _MenuItem(icon: Icons.phone_android_outlined, label: 'Tentang Aplikasi'),
-      _MenuItem(icon: Icons.help_outline,           label: 'Bantuan'),
+      if (_nomorKamar == '-' || _nomorKamar == 'Belum terikat kos')
+        _MenuItem(
+          icon: Icons.vpn_key_outlined,
+          label: 'Masukkan Kode Kamar',
+          onTap: () async {
+            final result = await Navigator.of(context).pushNamed('/input-kode');
+            if (result == true) {
+              _loadProfileData();
+            }
+          },
+        ),
+      _MenuItem(
+        icon: Icons.info_outline,
+        label: 'Info Kamar Saya',
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_nomorKamar == '-'
+                  ? 'Anda belum terdaftar di kamar manapun.'
+                  : 'Anda terdaftar di $_nomorKamar - $_namaKos'),
+            ),
+          );
+        },
+      ),
+      _MenuItem(
+        icon: Icons.phone_android_outlined,
+        label: 'Tentang Aplikasi',
+        onTap: () {
+          showAboutDialog(
+            context: context,
+            applicationName: 'KosKu',
+            applicationVersion: _appVersion,
+            applicationIcon: const Icon(Icons.home_work, color: _kPrimary, size: 40),
+            children: const [
+              Text('Aplikasi pengelolaan kos kelompok mahasiswa Pemrograman Mobile.'),
+            ],
+          );
+        },
+      ),
     ];
 
     return Container(

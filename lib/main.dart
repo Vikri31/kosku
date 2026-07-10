@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
@@ -5,10 +6,10 @@ import 'screens/auth/register_screen.dart';
 import 'screens/auth/pilih_role_screen.dart';
 import 'screens/auth/register_penghuni_screen.dart';
 import 'screens/admin/dashboard/dashboard_screen.dart';
-import 'screens/user/dashboard_penghuni_screen.dart';
-import 'screens/user/tagihan_screen.dart';
-import 'screens/user/lengkapi_data_diri_screen.dart';
-import 'screens/user/input_kode_screen.dart';
+import 'screens/user/dashboard/dashboard_penghuni_screen.dart';
+import 'screens/user/tagihan/tagihan_screen.dart';
+import 'screens/user/profil/lengkapi_data_diri_screen.dart';
+import 'screens/user/join/input_kode_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,9 +38,10 @@ class MyApp extends StatelessWidget {
         ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
       ),
-      initialRoute: '/input-kode',
+      // Rute awal diarahkan ke '/' yang mengaktifkan pengecekan session di AuthGate
+      initialRoute: '/',
       routes: {
-        '/': (context) => const GerbangUtamaScreen(),
+        '/': (context) => const AuthGate(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/pilih-role': (context) => const PilihRoleScreen(),
@@ -49,8 +51,155 @@ class MyApp extends StatelessWidget {
         '/tagihan': (context) => const TagihanScreen(),
         '/lengkapi-data': (context) => const LengkapiDataDiriScreen(),
         '/input-kode': (context) => const InputKodeScreen(),
+        '/gerbang': (context) => const GerbangUtamaScreen(),
       },
     );
+  }
+}
+
+// ── WIDGET AUTH GATE (Pencegah & Penyeleksi Sesi) ────────────────────────────
+// Widget Stateful ini bertindak sebagai penjaga gerbang masuk aplikasi.
+// Ia mendeteksi status login pengguna secara instan dan real-time menggunakan Supabase Auth.
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  Session? _currentSession;
+  bool _isLoading = true;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // A. Periksa session saat pertama kali aplikasi dimuat (Sync Check)
+    _checkInitialSession();
+    // B. Dengarkan perubahan status login secara real-time (Login / Logout / Session Expired)
+    _listenToAuthChanges();
+  }
+
+  void _checkInitialSession() {
+    final session = Supabase.instance.client.auth.currentSession;
+    setState(() {
+      _currentSession = session;
+      _isLoading = false;
+    });
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
+      if (mounted) {
+        setState(() {
+          _currentSession = data.session;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // KONDISI LOADING: Menampilkan indikator loading saat session sedang diperiksa
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF004D40),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    // KONDISI BELUM LOGIN (session == null): Arahkan paksa ke LoginScreen()
+    if (_currentSession == null) {
+      return const LoginScreen();
+    }
+
+    // KONDISI SUDAH LOGIN (session != null):
+    // Ambil data pengguna dan cari role untuk menentukan layar beranda yang cocok
+    final user = _currentSession!.user;
+
+    return FutureBuilder<String?>(
+      future: _getUserRole(user),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF004D40),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 20),
+                  Text(
+                    'Memverifikasi Akun...',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final role = snapshot.data;
+
+        // Arahkan admin / pemilik ke Dashboard Admin
+        if (role == 'admin' || role == 'pemilik') {
+          return const DashboardScreen();
+        }
+        // Arahkan penyewa / penghuni ke Dashboard Penghuni (HomeScreen)
+        else if (role == 'user' || role == 'penghuni') {
+          return const DashboardPenghuniScreen();
+        }
+        // Jika role belum terdaftar/tidak diketahui, berikan akses untuk menginput kode kamar
+        else {
+          return const InputKodeScreen();
+        }
+      },
+    );
+  }
+
+  // Fungsi pembantu (helper) untuk mengambil role pengguna secara aman
+  Future<String?> _getUserRole(User user) async {
+    final client = Supabase.instance.client;
+    String? role;
+
+    try {
+      // Langkah 1: Cari role di tabel detail_penyewa
+      final detail = await client
+          .from('detail_penyewa')
+          .select()
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      if (detail != null && detail['role'] != null) {
+        role = detail['role'].toString();
+      }
+    } catch (_) {
+      // Abaikan error query
+    }
+
+    // Langkah 2: Fallback ke metadata akun user jika tidak ada di tabel detail_penyewa
+    if (role == null) {
+      final metadata = user.userMetadata;
+      if (metadata != null && metadata['role'] != null) {
+        role = metadata['role'].toString();
+      } else {
+        // Deteksi alternatif jika metadata memiliki nama_kos, berarti pemilik (admin)
+        if (metadata != null && metadata.containsKey('nama_kos')) {
+          role = 'pemilik';
+        }
+      }
+    }
+
+    return role;
   }
 }
 

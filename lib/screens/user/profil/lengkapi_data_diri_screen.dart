@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -23,8 +24,8 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
 
   // State variables
   DateTime? _selectedDate;
-  File? _profileImage;
-  File? _ktpImage;
+  XFile? _profileImage;
+  XFile? _ktpImage;
   String? _existingProfileUrl;
   String? _existingKtpUrl;
   
@@ -157,7 +158,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       );
       if (image != null) {
         setState(() {
-          _profileImage = File(image.path);
+          _profileImage = image;
         });
       }
     } catch (e) {
@@ -173,7 +174,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       );
       if (image != null) {
         setState(() {
-          _ktpImage = File(image.path);
+          _ktpImage = image;
         });
       }
     } catch (e) {
@@ -216,15 +217,21 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
   }
 
   // --- Supabase Upload Helper ---
-  Future<String?> _uploadFileToSupabase(File file, String prefix) async {
+  Future<String?> _uploadFileToSupabase(XFile file, String prefix) async {
     try {
       final client = Supabase.instance.client;
-      final fileExt = path.extension(file.path);
+      final fileExt = path.extension(file.name);
       final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().hashCode}$fileExt';
       final uploadPath = 'uploads/$fileName';
 
+      final bytes = await file.readAsBytes();
+
       // Upload file to the 'foto_kamar' bucket (or fallback bucket)
-      await client.storage.from('foto_kamar').upload(uploadPath, file);
+      await client.storage.from('foto_kamar').uploadBinary(
+        uploadPath,
+        bytes,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
       
       // Get public URL
       final publicUrl = client.storage.from('foto_kamar').getPublicUrl(uploadPath);
@@ -417,10 +424,12 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                           child: CircleAvatar(
                             backgroundColor: Colors.transparent,
                             backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
+                                ? (kIsWeb
+                                    ? NetworkImage(_profileImage!.path)
+                                    : FileImage(io.File(_profileImage!.path))) as ImageProvider
                                 : (_existingProfileUrl != null && _existingProfileUrl!.isNotEmpty
                                     ? NetworkImage(_existingProfileUrl!)
-                                    : null) as ImageProvider?,
+                                    : null),
                             child: _profileImage == null && (_existingProfileUrl == null || _existingProfileUrl!.isEmpty)
                                 ? const Icon(Icons.person, size: 54, color: _kPrimary)
                                 : null,
@@ -563,12 +572,19 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(
-                                    _ktpImage!,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: kIsWeb
+                                      ? Image.network(
+                                          _ktpImage!.path,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          io.File(_ktpImage!.path),
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          fit: BoxFit.cover,
+                                        ),
                                 ),
                                 Container(
                                   decoration: BoxDecoration(

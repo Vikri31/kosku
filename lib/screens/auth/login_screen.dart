@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pilih_role_screen.dart';
 import '../admin/dashboard/dashboard_screen.dart';
-import '../user/dashboard_penghuni_screen.dart';
+import '../user/dashboard/dashboard_penghuni_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
