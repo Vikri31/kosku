@@ -295,7 +295,29 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
           .map((e) => e.key)
           .toList();
 
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      final currentUserId = currentUser?.id;
+
+      // Pastikan profil_admin sudah ada agar foreign key terpenuhi
+      if (currentUserId != null) {
+        final existingProfile = await Supabase.instance.client
+            .from('profil_admin')
+            .select('id_admin')
+            .eq('id_admin', currentUserId)
+            .maybeSingle();
+
+        if (existingProfile == null) {
+          // Buat baris profil_admin dengan data minimal dari akun auth
+          final namaDefault =
+              currentUser?.userMetadata?['nama_lengkap'] ??
+              currentUser?.email?.split('@').first ??
+              'Admin';
+          await Supabase.instance.client.from('profil_admin').insert({
+            'id_admin': currentUserId,
+            'nama_lengkap': namaDefault,
+          });
+        }
+      }
 
       final Map<String, dynamic> payload = {
         'nomor_kamar': nomorKamar,
