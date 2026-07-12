@@ -28,7 +28,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
   String _namaPenghuni = '-';
   String _namaKos = 'Memuat kos...';
   String _nomorKamar = '-';
-  String _alamat = '-';
   String _tanggalMasuk = '-';
   String _jatuhTempo = '-';
   String _sisaHari = '-';
@@ -74,7 +73,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               'Penghuni';
           _namaKos = 'Belum terikat kamar';
           _nomorKamar = '-';
-          _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
           _tanggalMasuk = '-';
           _jatuhTempo = '-';
           _sisaHari = '-';
@@ -106,7 +104,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               'Penghuni';
           _namaKos = 'Belum terikat kamar';
           _nomorKamar = '-';
-          _alamat = 'Silakan lengkapi data diri Anda di menu Profil';
           _tanggalMasuk = '-';
           _jatuhTempo = '-';
           _sisaHari = '-';
@@ -122,7 +119,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       }
 
       final String namaLengkap = penyewa['nama_lengkap'] ?? '-';
-      final String whatsapp = penyewa['nomor_whatsapp'] ?? '';
       final int idPenyewa = penyewa['id_penyewa'];
 
       // 3. Dapatkan data sewa aktif
@@ -138,7 +134,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPenghuni = namaLengkap;
           _namaKos = 'Belum terikat kamar';
           _nomorKamar = '-';
-          _alamat = 'Silakan hubungi pemilik kos atau masukkan kode kamar';
           _tanggalMasuk = '-';
           _jatuhTempo = '-';
           _sisaHari = '-';
@@ -176,7 +171,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPenghuni = namaLengkap;
           _namaKos = 'Kamar tidak ditemukan';
           _nomorKamar = '-';
-          _alamat = '-';
           _tanggalMasuk = '-';
           _jatuhTempo = '-';
           _sisaHari = '-';
@@ -197,6 +191,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       // 5. Dapatkan data admin (pemilik kos) jika ada
       String namaPemilik = '-';
       String namaKos = 'Kosku';
+      String noPemilik = '';
       if (idAdmin != null) {
         final admin = await supabase
             .from('profil_admin')
@@ -207,6 +202,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
         if (admin != null) {
           namaPemilik = admin['nama_lengkap'] ?? '-';
           namaKos = admin['nama_kost'] ?? 'Kosku';
+          noPemilik = admin['nomor_wa'] ?? '';
         }
       }
 
@@ -228,7 +224,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       if (invoices.isNotEmpty) {
         try {
           unpaidInvoice = invoices.firstWhere(
-            (inv) => inv['status_pembayaran'] != 'LUNAS',
+            (inv) => inv['status_pembayaran']?.toString().toUpperCase() != 'LUNAS',
           );
         } catch (_) {
           unpaidInvoice = invoices.first;
@@ -254,7 +250,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       }
 
       for (var inv in invoices) {
-        final bool isLunas = inv['status_pembayaran'] == 'LUNAS';
+        final bool isLunas = inv['status_pembayaran']?.toString().toUpperCase() == 'LUNAS';
         String label =
             "Sewa ${_getNamaBulanDariTanggal(inv['tanggal_dibuat'])}";
         String tglStr = "";
@@ -279,15 +275,14 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPenghuni = namaLengkap;
           _namaKos = namaKos;
           _nomorKamar = nomorKamar;
-          _alamat = detailPenyewa['alamat_ktp'] ?? '-';
           _tanggalMasuk = formattedTglMasuk;
           _jatuhTempo = jatuhTempoActive;
           _sisaHari = sisaHariActive;
           _dekatJatuhTempo = dekatJatuhTempoActive;
           _nominalTagihan = nominalTagihanActive;
           _statusTagihan = statusTagihanActive;
-          _namaPemilik = namaPemilik;
-          _noPemilik = whatsapp.isNotEmpty ? whatsapp : "6281234567890";
+           _namaPemilik = namaPemilik;
+          _noPemilik = noPemilik.isNotEmpty ? noPemilik : "6281234567890";
           _tagihan = mappedTagihan;
           _isLoading = false;
         });
@@ -490,16 +485,26 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               ],
             ),
           ),
-          // Avatar
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white54, width: 1.5),
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 24),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/notifications');
+                },
+                icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white54, width: 1.5),
+                ),
+                child: const Icon(Icons.person, color: Colors.white, size: 24),
+              ),
+            ],
           ),
         ],
       ),
@@ -573,7 +578,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  _alamat,
+                  _namaKos,
                   style: const TextStyle(
                     color: Color(0xFF374151),
                     fontSize: 12,
@@ -641,13 +646,13 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
             badge: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: _kDanger.withValues(alpha: 0.12),
+                color: (_statusTagihan.toUpperCase() == 'LUNAS' ? _kPrimary : _kDanger).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 _statusTagihan,
-                style: const TextStyle(
-                  color: _kDanger,
+                style: TextStyle(
+                  color: _statusTagihan.toUpperCase() == 'LUNAS' ? _kPrimary : _kDanger,
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                 ),
