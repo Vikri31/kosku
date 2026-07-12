@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'invoice_penghuni_screen.dart';
+import '../../../services/notification_service.dart';
 
 class DetailTagihanScreen extends StatefulWidget {
   final Map<String, dynamic> invoice;
@@ -77,7 +78,7 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
   }
 
   Future<void> _pickImage() async {
-    if (_statusPembayaran == 'Lunas' || _statusPembayaran == 'LUNAS') {
+    if (_statusPembayaran.toUpperCase() == 'LUNAS') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Tagihan ini sudah lunas!'),
@@ -154,6 +155,24 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
             'status_pembayaran': 'Menunggu Verifikasi',
           })
           .eq('id_invoice', widget.invoice['id_invoice']);
+
+      // Kirim Notifikasi Skenario B (User -> Admin)
+      try {
+        final String? adminId = await NotificationService.getAdminUserId(widget.invoice['id_sewa']);
+        if (adminId != null) {
+          final String title = 'Bukti Pembayaran Baru 🔔';
+          final String roomNo = _nomorKamar.replaceAll(RegExp(r'[^0-9]'), '');
+          final String msg = 'Penyewa Kamar $roomNo telah mengunggah bukti transfer untuk diverifikasi.';
+          await NotificationService.sendNotification(
+            idUser: adminId,
+            judul: title,
+            pesan: msg,
+            kategori: 'admin',
+          );
+        }
+      } catch (e) {
+        debugPrint('Gagal mengirim notifikasi upload bukti pembayaran: $e');
+      }
 
       if (mounted) {
         setState(() {
@@ -247,7 +266,7 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isPaid = _statusPembayaran == 'Lunas' || _statusPembayaran == 'LUNAS';
+    final bool isPaid = _statusPembayaran.toUpperCase() == 'LUNAS';
     final bool isPending = _statusPembayaran == 'Menunggu Verifikasi';
 
     String statusLabel = 'BELUM BAYAR';

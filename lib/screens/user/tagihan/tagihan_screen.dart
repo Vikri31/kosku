@@ -91,15 +91,13 @@ class _TagihanScreenState extends State<TagihanScreen> {
 
       final int idPenyewa = penyewa['id_penyewa'];
 
-      // 3. Dapatkan sewa aktif
-      final sewa = await supabase
+      // 3. Dapatkan semua sewa (aktif, selesai, dll.)
+      final List<dynamic> sewaResponse = await supabase
           .from('sewa')
           .select()
-          .eq('id_penyewa', idPenyewa)
-          .eq('status_sewa', 'Aktif')
-          .maybeSingle();
+          .eq('id_penyewa', idPenyewa);
 
-      if (sewa == null) {
+      if (sewaResponse.isEmpty) {
         setState(() {
           _isDataLengkap = true;
           _hasActiveSewa = false;
@@ -112,13 +110,14 @@ class _TagihanScreenState extends State<TagihanScreen> {
         return;
       }
 
-      final int idSewa = sewa['id_sewa'];
+      final bool hasActiveSewa = sewaResponse.any((s) => s['status_sewa'] == 'Aktif');
+      final List<int> idSewaList = sewaResponse.map<int>((s) => s['id_sewa'] as int).toList();
 
       // 4. Ambil semua invoice
       final List<dynamic> response = await supabase
           .from('invoice')
           .select()
-          .eq('id_sewa', idSewa)
+          .inFilter('id_sewa', idSewaList)
           .order('tanggal_dibuat', ascending: false);
 
       final List<Map<String, dynamic>> invoices = List<Map<String, dynamic>>.from(response);
@@ -130,7 +129,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
         final int amount = inv['total_tagihan'] != null
             ? int.parse(inv['total_tagihan'].toString())
             : 0;
-        if (inv['status_pembayaran'] == 'LUNAS') {
+        if (inv['status_pembayaran']?.toString().toUpperCase() == 'LUNAS') {
           totalPaid += amount;
         } else {
           totalUnpaid += amount;
@@ -140,7 +139,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
       if (mounted) {
         setState(() {
           _isDataLengkap = true;
-          _hasActiveSewa = true;
+          _hasActiveSewa = hasActiveSewa;
           _allInvoices = invoices;
           _totalPaidStr = _formatRupiah(totalPaid);
           _totalUnpaidStr = _formatRupiah(totalUnpaid);
@@ -165,9 +164,9 @@ class _TagihanScreenState extends State<TagihanScreen> {
       if (filter == 'Semua') {
         _filteredInvoices = _allInvoices;
       } else if (filter == 'Lunas') {
-        _filteredInvoices = _allInvoices.where((inv) => inv['status_pembayaran'] == 'LUNAS').toList();
+        _filteredInvoices = _allInvoices.where((inv) => inv['status_pembayaran']?.toString().toUpperCase() == 'LUNAS').toList();
       } else {
-        _filteredInvoices = _allInvoices.where((inv) => inv['status_pembayaran'] != 'LUNAS').toList();
+        _filteredInvoices = _allInvoices.where((inv) => inv['status_pembayaran']?.toString().toUpperCase() != 'LUNAS').toList();
       }
     });
   }
@@ -478,7 +477,7 @@ class _BillTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isPaid = invoice['status_pembayaran'] == 'LUNAS';
+    final bool isPaid = invoice['status_pembayaran']?.toString().toUpperCase() == 'LUNAS';
     final accentColor = isPaid
         ? TagihanScreen._primaryColor
         : const Color(0xFFF1B64C);
