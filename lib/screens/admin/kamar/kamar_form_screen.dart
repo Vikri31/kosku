@@ -315,6 +315,7 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
           await Supabase.instance.client.from('profil_admin').insert({
             'id_admin': currentUserId,
             'nama_lengkap': namaDefault,
+            'nama_kost': 'Kos Saya', // nilai sementara, bisa diubah di halaman Profil
           });
         }
       }
