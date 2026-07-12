@@ -96,7 +96,6 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
                 if (kamar != null) {
                   _nomorKamar = 'Kamar ${kamar['nomor_kamar']}';
-
                   final String? idAdmin = kamar['id_admin'];
                   if (idAdmin != null) {
                     final admin = await client

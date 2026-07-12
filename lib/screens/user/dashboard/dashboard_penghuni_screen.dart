@@ -584,7 +584,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          // Tanggal masuk
           Row(
             children: [
               const Icon(

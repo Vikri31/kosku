@@ -231,14 +231,11 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       final bytes = await file.readAsBytes();
 
       // Upload file to the 'foto_kamar' bucket (or fallback bucket)
-      await client.storage
-          .from('foto_kamar')
-          .uploadBinary(
-            uploadPath,
-            bytes,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-          );
-
+      await client.storage.from('foto_kamar').uploadBinary(
+        uploadPath,
+        bytes,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
       // Get public URL
       final publicUrl = client.storage
           .from('foto_kamar')
@@ -441,24 +438,13 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                             backgroundColor: Colors.transparent,
                             backgroundImage: _profileImage != null
                                 ? (kIsWeb
-                                          ? NetworkImage(_profileImage!.path)
-                                          : FileImage(
-                                              io.File(_profileImage!.path),
-                                            ))
-                                      as ImageProvider
-                                : (_existingProfileUrl != null &&
-                                          _existingProfileUrl!.isNotEmpty
-                                      ? NetworkImage(_existingProfileUrl!)
-                                      : null),
-                            child:
-                                _profileImage == null &&
-                                    (_existingProfileUrl == null ||
-                                        _existingProfileUrl!.isEmpty)
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 54,
-                                    color: _kPrimary,
-                                  )
+                                    ? NetworkImage(_profileImage!.path)
+                                    : FileImage(io.File(_profileImage!.path))) as ImageProvider
+                                : (_existingProfileUrl != null && _existingProfileUrl!.isNotEmpty
+                                    ? NetworkImage(_existingProfileUrl!)
+                                    : null),
+                            child: _profileImage == null && (_existingProfileUrl == null || _existingProfileUrl!.isEmpty)
+                                ? const Icon(Icons.person, size: 54, color: _kPrimary)
                                 : null,
                           ),
                         ),

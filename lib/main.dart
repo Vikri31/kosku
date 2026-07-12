@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
@@ -10,17 +11,33 @@ import 'screens/user/tagihan/tagihan_screen.dart';
 import 'screens/user/profil/lengkapi_data_diri_screen.dart';
 import 'screens/user/join/input_kode_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi Supabase menggunakan URL project kelompok
-  await Supabase.initialize(
-    url: 'https://lscrtjygvlamygonwihn.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A',
-  );
+  try {
+    await Supabase.initialize(
+      url: 'https://lscrtjygvlamygonwihn.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY3J0anlndmxhbXlnb253aWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDM5NjMsImV4cCI6MjA5NTU3OTk2M30.03NJ5aSG3sC9oGJUVMQBkJFhJmcQXxMJmvHgGY-pm9A',
+    );
 
-  runApp(const MyApp());
+    runApp(const MyApp());
+  } catch (e) {
+    runApp(const StartupErrorApp());
+  }
+}
+
+class StartupErrorApp extends StatelessWidget {
+  const StartupErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Gagal menghubungkan aplikasi ke Supabase.')),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -37,9 +54,10 @@ class MyApp extends StatelessWidget {
         ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
       ),
+      // Rute awal diarahkan ke '/' yang mengaktifkan pengecekan session di AuthGate
       initialRoute: '/',
       routes: {
-        '/': (context) => const GerbangUtamaScreen(),
+        '/': (context) => const AuthGate(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/pilih-role': (context) => const PilihRoleScreen(),
@@ -49,8 +67,165 @@ class MyApp extends StatelessWidget {
         '/tagihan': (context) => const TagihanScreen(),
         '/lengkapi-data': (context) => const LengkapiDataDiriScreen(),
         '/input-kode': (context) => const InputKodeScreen(),
+        '/gerbang': (context) => const GerbangUtamaScreen(),
       },
     );
+  }
+}
+
+// ── WIDGET AUTH GATE (Pencegah & Penyeleksi Sesi) ────────────────────────────
+// Widget Stateful ini bertindak sebagai penjaga gerbang masuk aplikasi.
+// Ia mendeteksi status login pengguna secara instan dan real-time menggunakan Supabase Auth.
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  Session? _currentSession;
+  bool _isLoading = true;
+  Future<String?>? _roleFuture;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // A. Periksa session saat pertama kali aplikasi dimuat (Sync Check)
+    _checkInitialSession();
+    // B. Dengarkan perubahan status login secara real-time (Login / Logout / Session Expired)
+    _listenToAuthChanges();
+  }
+
+  void _checkInitialSession() {
+    final session = Supabase.instance.client.auth.currentSession;
+
+    setState(() {
+      _currentSession = session;
+      _roleFuture = session == null ? null : _getUserRole(session.user);
+      _isLoading = false;
+    });
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
+      if (!mounted) return;
+
+      setState(() {
+        _currentSession = data.session;
+        _roleFuture = data.session == null
+            ? null
+            : _getUserRole(data.session!.user);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // KONDISI LOADING: Menampilkan indikator loading saat session sedang diperiksa
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF004D40),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    // KONDISI BELUM LOGIN (session == null): Arahkan paksa ke LoginScreen()
+    if (_currentSession == null) {
+      return const LoginScreen();
+    }
+
+    // KONDISI SUDAH LOGIN (session != null):
+    // Ambil data pengguna dan cari role untuk menentukan layar beranda yang cocok
+    final user = _currentSession!.user;
+
+    return FutureBuilder<String?>(
+      future: _roleFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF004D40),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 20),
+                  Text(
+                    'Memverifikasi Akun...',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const LoginScreen();
+        }
+
+        final role = snapshot.data;
+
+        // Arahkan admin / pemilik ke Dashboard Admin
+        if (role == 'admin' || role == 'pemilik') {
+          return const DashboardScreen();
+        }
+        // Arahkan penyewa / penghuni ke Dashboard Penghuni (HomeScreen)
+        else if (role == 'user' || role == 'penghuni') {
+          return const DashboardPenghuniScreen();
+        }
+        // Jika role belum terdaftar/tidak diketahui, berikan akses untuk menginput kode kamar
+        else {
+          return const InputKodeScreen();
+        }
+      },
+    );
+  }
+
+  // Fungsi pembantu (helper) untuk mengambil role pengguna secara aman
+  Future<String?> _getUserRole(User user) async {
+    final client = Supabase.instance.client;
+    String? role;
+
+    try {
+      // Langkah 1: Cari role di tabel detail_penyewa
+      final detail = await client
+          .from('detail_penyewa')
+          .select()
+          .eq('id_user', user.id)
+          .maybeSingle();
+
+      if (detail != null && detail['role'] != null) {
+        role = detail['role'].toString();
+      }
+    } catch (_) {
+      // Abaikan error query
+    }
+
+    // Langkah 2: Fallback ke metadata akun user jika tidak ada di tabel detail_penyewa
+    if (role == null) {
+      final metadata = user.userMetadata;
+      if (metadata != null && metadata['role'] != null) {
+        role = metadata['role'].toString();
+      } else {
+        // Deteksi alternatif jika metadata memiliki nama_kos, berarti pemilik (admin)
+        if (metadata != null && metadata.containsKey('nama_kos')) {
+          role = 'pemilik';
+        }
+      }
+    }
+
+    return role;
   }
 }
 
