@@ -125,9 +125,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
                 if (invoices.isNotEmpty) {
                   final hasUnpaid = invoices.any(
-                    (inv) =>
-                        inv['status_pembayaran']?.toString().toUpperCase() !=
-                        'LUNAS',
+                    (inv) => inv['status_pembayaran']?.toString().toUpperCase() != 'LUNAS',
                   );
                   if (hasUnpaid) {
                     _statusLunas = false;
@@ -518,20 +516,20 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         icon: Icons.volume_up_outlined,
         label: 'Coba Notifikasi Sistem',
         onTap: () async {
-          final AndroidNotificationDetails androidPlatformChannelSpecifics =
+          const AndroidNotificationDetails androidPlatformChannelSpecifics =
               AndroidNotificationDetails(
-                'kosku_test_channel',
-                'Test Notifikasi KosKu',
-                channelDescription:
-                    'Channel untuk testing notifikasi suara aplikasi KosKu',
-                importance: Importance.max,
-                priority: Priority.high,
-                playSound: true,
-                enableVibration: true,
-              );
+            'kosku_test_channel',
+            'Test Notifikasi KosKu',
+            channelDescription: 'Channel untuk testing notifikasi suara aplikasi KosKu',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          );
 
-          final NotificationDetails platformChannelSpecifics =
-              NotificationDetails(android: androidPlatformChannelSpecifics);
+          const NotificationDetails platformChannelSpecifics = NotificationDetails(
+            android: androidPlatformChannelSpecifics,
+          );
 
           try {
             await flutterLocalNotificationsPlugin.show(
@@ -633,20 +631,14 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text(
                 'Batal',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text(
                 'Ya, Pindah',
-                style: TextStyle(
-                  color: Color(0xFFFF3B30),
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Color(0xFFFF3B30), fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -661,8 +653,9 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) =>
-            const Center(child: CircularProgressIndicator(color: _kPrimary)),
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: _kPrimary),
+        ),
       );
 
       try {
@@ -686,9 +679,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Berhasil keluar dari kos. Status kamar diubah menjadi Kosong.',
-              ),
+              content: Text('Berhasil keluar dari kos. Status kamar diubah menjadi Kosong.'),
               backgroundColor: Colors.green,
             ),
           );

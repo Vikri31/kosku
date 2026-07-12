@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/notification_service.dart';
+import 'transaksi_detail_screen.dart';
 
 class TambahTransaksiScreen extends StatefulWidget {
-  const TambahTransaksiScreen({super.key});
+  final int? initialSewaId;
+  const TambahTransaksiScreen({super.key, this.initialSewaId});
 
   @override
   State<TambahTransaksiScreen> createState() => _TambahTransaksiScreenState();
@@ -58,6 +61,19 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
       if (mounted) {
         setState(() {
           _activeLeases = List<Map<String, dynamic>>.from(data);
+          if (widget.initialSewaId != null) {
+            final found = _activeLeases.firstWhere(
+              (lease) => lease['id_sewa'] == widget.initialSewaId,
+              orElse: () => <String, dynamic>{},
+            );
+            if (found.isNotEmpty) {
+              _selectedLease = found;
+              if (found['kamar'] != null) {
+                final harga = found['kamar']['harga_sewa_dasar'] ?? 0;
+                _nominalController.text = harga.toString();
+              }
+            }
+          }
           _isLoading = false;
         });
       }
@@ -148,6 +164,33 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
 
       final int idInvoice = insertedInvoice['id_invoice'];
 
+      // Kirim Notifikasi Skenario A (Admin -> User)
+      try {
+        final String? userPenyewaId = await NotificationService.getPenyewaUserId(idSewa);
+        if (userPenyewaId != null) {
+          final buffer = StringBuffer();
+          final strVal = nominal.toString();
+          int count = 0;
+          for (int i = strVal.length - 1; i >= 0; i--) {
+            buffer.write(strVal[i]);
+            count++;
+            if (count % 3 == 0 && i != 0) {
+              buffer.write('.');
+            }
+          }
+          final formattedNominal = "Rp ${buffer.toString().split('').reversed.join('')}";
+          
+          await NotificationService.sendNotification(
+            idUser: userPenyewaId,
+            judul: 'Tagihan Baru Tersedia 🧾',
+            pesan: 'Tagihan baru sebesar $formattedNominal telah dibuat. Harap lakukan pembayaran sebelum jatuh tempo.',
+            kategori: 'penyewa',
+          );
+        }
+      } catch (e) {
+        debugPrint('Gagal mengirim notifikasi pembuatan invoice: $e');
+      }
+
       // 2. If status is Lunas, insert to pemasukan table
       if (_isPaid) {
         await client.from('pemasukan').insert({
@@ -166,7 +209,19 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pop(context, true);
+        
+        if (widget.initialSewaId == null) {
+          // Skenario 2: Navigasi ke Detail Transaksi (lalu ke generate & share invoice)
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DetailTransaksiScreen(idInvoice: idInvoice),
+            ),
+          );
+        } else {
+          // Skenario 1: Langsung kembali ke halaman Detail Kamar
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -342,7 +397,12 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
                             : ElevatedButton.icon(
                                 onPressed: _simpanTransaksi,
                                 icon: const Icon(Icons.save_outlined, size: 20),
-                                label: const Text('Simpan Transaksi', style: TextStyle(letterSpacing: 0.5)),
+                                label: Text(
+                                  widget.initialSewaId == null
+                                      ? 'Simpan & Detail Transaksi'
+                                      : 'Simpan Transaksi',
+                                  style: const TextStyle(letterSpacing: 0.5),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   elevation: 2,
                                   backgroundColor: primaryColor,

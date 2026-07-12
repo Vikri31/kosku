@@ -12,6 +12,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _namaLengkapController;
   late TextEditingController _namaKostController;
+  late TextEditingController _nomorWaController;
   late TextEditingController _emailController;
 
   bool _isLoading = false;
@@ -23,17 +24,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     final initialName = user?.userMetadata?['nama_lengkap'] ?? 'Budi Santoso';
     final initialKos = user?.userMetadata?['nama_kos'] ?? 'KosKu Harmoni';
+    final initialWa = user?.userMetadata?['nomor_wa'] ?? '';
     final email = user?.email ?? 'budi.santoso@example.com';
 
     _namaLengkapController = TextEditingController(text: initialName);
     _namaKostController = TextEditingController(text: initialKos);
+    _nomorWaController = TextEditingController(text: initialWa);
     _emailController = TextEditingController(text: email);
+
+    _loadProfileFromDatabase();
+  }
+
+  Future<void> _loadProfileFromDatabase() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final data = await Supabase.instance.client
+          .from('profil_admin')
+          .select()
+          .eq('id_admin', user.id)
+          .maybeSingle();
+
+      if (data != null) {
+        if (mounted) {
+          setState(() {
+            if (data['nama_lengkap'] != null) {
+              _namaLengkapController.text = data['nama_lengkap'];
+            }
+            if (data['nama_kost'] != null) {
+              _namaKostController.text = data['nama_kost'];
+            }
+            if (data['nomor_wa'] != null) {
+              _nomorWaController.text = data['nomor_wa'];
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading profile from database: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     _namaLengkapController.dispose();
     _namaKostController.dispose();
+    _nomorWaController.dispose();
     _emailController.dispose();
     super.dispose();
   }
@@ -49,6 +96,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final name = _namaLengkapController.text.trim();
       final kos = _namaKostController.text.trim();
+      final wa = _nomorWaController.text.trim();
 
       // Update user metadata in Supabase Auth
       await Supabase.instance.client.auth.updateUser(
@@ -56,23 +104,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           data: {
             'nama_lengkap': name,
             'nama_kos': kos,
+            'nomor_wa': wa,
           },
         ),
       );
 
-      // Attempt to upsert/update profil_admin table if exists
-      try {
-        final userId = Supabase.instance.client.auth.currentUser?.id;
-        if (userId != null) {
-          await Supabase.instance.client.from('profil_admin').upsert({
-            'id_admin': userId,
-            'nama_lengkap': name,
-            'nama_kost': kos,
-          });
-        }
-      } catch (e) {
-        // Suppress errors for profil_admin since it might not be fully configured or migrated
-        debugPrint('Upsert profil_admin error: $e');
+      // Attempt to upsert/update profil_admin table
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        await Supabase.instance.client.from('profil_admin').upsert({
+          'id_admin': userId,
+          'nama_lengkap': name,
+          'nama_kost': kos,
+          'nomor_wa': wa,
+        });
       }
 
       if (mounted) {
@@ -82,7 +127,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -285,6 +330,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Nama properti kos tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Field WhatsApp Label
+                    const Text(
+                      'Nomor WhatsApp',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Field WhatsApp Input
+                    TextFormField(
+                      controller: _nomorWaController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.phone_outlined, color: Colors.grey),
+                        hintText: 'Contoh: 6281234567890',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nomor WhatsApp tidak boleh kosong';
                         }
                         return null;
                       },

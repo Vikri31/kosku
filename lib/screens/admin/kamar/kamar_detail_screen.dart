@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kamar_form_screen.dart';
 import 'penyewa_form_screen.dart';
 import 'konfirmasi_penghuni_screen.dart';
+import '../transaksi/tambah_transaksi_screen.dart';
+import '../../../services/notification_service.dart';
 
 class KamarDetailScreen extends StatefulWidget {
   final int idKamar;
@@ -34,11 +36,18 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   List<Map<String, dynamic>> _historiPembayaran = [];
   bool _isLoading = true;
   int _currentImageIndex = 0;
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   String _formatRupiah(num number) {
@@ -258,149 +267,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
     }
   }
 
-  Future<void> _tambahPembayaranDialog(int idSewa) async {
-    final formKey = GlobalKey<FormState>();
-    final nomorInvoiceController = TextEditingController(
-      text:
-          'INV-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${math.Random().nextInt(9000) + 1000}',
-    );
-    final totalTagihanController = TextEditingController();
-    final periodeSewaController = TextEditingController(
-      text: '${DateTime.now().month}/${DateTime.now().year}',
-    );
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Tambah Pembayaran (Invoice)',
-          style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nomorInvoiceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nomor Invoice',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Harap isi nomor invoice' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: periodeSewaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Periode Sewa (Bulan/Tahun)',
-                    border: OutlineInputBorder(),
-                    hintText: 'Misal: 07/2026',
-                  ),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Harap isi periode sewa' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: totalTagihanController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Total Tagihan (Rp)',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) {
-                      return 'Harap isi total tagihan';
-                    }
-                    if (int.tryParse(v) == null) {
-                      return 'Harap isi dengan angka';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx, true);
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true && mounted) {
-      setState(() => _isLoading = true);
-      try {
-        final client = Supabase.instance.client;
-        final total = int.parse(totalTagihanController.text.trim());
-        final today = DateTime.now().toIso8601String().split('T').first;
-        final dueDate = DateTime.now()
-            .add(const Duration(days: 7))
-            .toIso8601String()
-            .split('T')
-            .first;
-
-        await client.from('invoice').insert({
-          'id_sewa': idSewa,
-          'nomor_invoice': nomorInvoiceController.text.trim(),
-          'periode_sewa': periodeSewaController.text.trim(),
-          'biaya_sewa_pokok': total,
-          'biaya_listrik': 0,
-          'biaya_kebersihan': 0,
-          'total_tagihan': total,
-          'status_pembayaran': 'Belum Bayar',
-          'tanggal_dibuat': today,
-          'tanggal_jatuh_tempo': dueDate,
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tagihan baru berhasil dibuat!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        _loadData();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal membuat tagihan: $e'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    }
-  }
 
   Future<void> _keluarkanPenyewa(int idSewa, String nomorKamar) async {
     final confirmed = await showDialog<bool>(
@@ -500,6 +367,34 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
         'metode_bayar': 'Transfer Bank',
         'catatan': 'Pembayaran Invoice ${inv['nomor_invoice']}',
       });
+
+      // Kirim Notifikasi Skenario C (Admin -> User)
+      try {
+        final String? userPenyewaId = await NotificationService.getPenyewaUserId(inv['id_sewa']);
+        if (userPenyewaId != null) {
+          final total = inv['total_tagihan'] ?? inv['biaya_sewa_pokok'] ?? 0;
+          final buffer = StringBuffer();
+          final strVal = total.toString();
+          int count = 0;
+          for (int i = strVal.length - 1; i >= 0; i--) {
+            buffer.write(strVal[i]);
+            count++;
+            if (count % 3 == 0 && i != 0) {
+              buffer.write('.');
+            }
+          }
+          final formattedNominal = "Rp ${buffer.toString().split('').reversed.join('')}";
+
+          await NotificationService.sendNotification(
+            idUser: userPenyewaId,
+            judul: 'Pembayaran Terkonfirmasi 🎉',
+            pesan: 'Pembayaran tagihan sebesar $formattedNominal Anda telah dikonfirmasi dan dinyatakan LUNAS. Terima kasih!',
+            kategori: 'penyewa',
+          );
+        }
+      } catch (e) {
+        debugPrint('Gagal mengirim notifikasi konfirmasi lunas: $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -636,6 +531,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                     ),
                               )
                             : PageView.builder(
+                                controller: _pageController,
                                 itemCount:
                                     (_kamarData!['foto_kamar'] as List).length,
                                 onPageChanged: (index) {
@@ -666,18 +562,70 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                                 },
                               ),
                         // Gradient overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.black.withValues(alpha: 0.0),
-                              ],
+                        IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.3),
+                                  Colors.black.withValues(alpha: 0.0),
+                                ],
+                              ),
                             ),
                           ),
                         ),
+                        // Left Arrow Button
+                        if (_kamarData != null &&
+                            _kamarData!['foto_kamar'] != null &&
+                            (_kamarData!['foto_kamar'] as List).length > 1 &&
+                            _currentImageIndex > 0)
+                          Positioned(
+                            left: 12,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Material(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  icon: const Icon(Icons.chevron_left, color: Colors.white),
+                                  onPressed: () {
+                                    _pageController.previousPage(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Right Arrow Button
+                        if (_kamarData != null &&
+                            _kamarData!['foto_kamar'] != null &&
+                            (_kamarData!['foto_kamar'] as List).length > 1 &&
+                            _currentImageIndex < (_kamarData!['foto_kamar'] as List).length - 1)
+                          Positioned(
+                            right: 12,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Material(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  icon: const Icon(Icons.chevron_right, color: Colors.white),
+                                  onPressed: () {
+                                    _pageController.nextPage(
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
                         // Page indicator dots
                         if (_kamarData != null &&
                             _kamarData!['foto_kamar'] != null &&
@@ -1492,7 +1440,20 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             label: 'Tambah Pembayaran',
             icon: Icons.add_card_outlined,
             color: primaryColor,
-            onPressed: () => _tambahPembayaranDialog(_sewaData!['id_sewa']),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TambahTransaksiScreen(
+                    initialSewaId: _sewaData!['id_sewa'],
+                  ),
+                ),
+              ).then((value) {
+                if (value == true) {
+                  _loadData();
+                }
+              });
+            },
           ),
           const SizedBox(height: 12),
           _buildActionButton(

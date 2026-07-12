@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -10,9 +11,27 @@ import 'screens/user/dashboard/dashboard_penghuni_screen.dart';
 import 'screens/user/tagihan/tagihan_screen.dart';
 import 'screens/user/profil/lengkapi_data_diri_screen.dart';
 import 'screens/user/join/input_kode_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
+import 'screens/notification/notification_list_screen.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/launcher_icon');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  try {
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  } catch (e) {
+    debugPrint('Gagal inisialisasi local notification: $e');
+  }
 
   try {
     await Supabase.initialize(
@@ -68,6 +87,8 @@ class MyApp extends StatelessWidget {
         '/lengkapi-data': (context) => const LengkapiDataDiriScreen(),
         '/input-kode': (context) => const InputKodeScreen(),
         '/gerbang': (context) => const GerbangUtamaScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/notifications': (context) => const NotificationListScreen(),
       },
     );
   }
@@ -88,14 +109,128 @@ class _AuthGateState extends State<AuthGate> {
   bool _isLoading = true;
   Future<String?>? _roleFuture;
   StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationSubscription;
 
   @override
   void initState() {
     super.initState();
+    _requestNotificationPermission();
     // A. Periksa session saat pertama kali aplikasi dimuat (Sync Check)
     _checkInitialSession();
     // B. Dengarkan perubahan status login secara real-time (Login / Logout / Session Expired)
     _listenToAuthChanges();
+  }
+
+  void _requestNotificationPermission() {
+    flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+  }
+
+  void _showSystemNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'kosku_notifikasi_channel', // id
+      'Notifikasi KosKu', // name
+      channelDescription: 'Channel untuk notifikasi real-time aplikasi KosKu',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+
+    try {
+      await flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000), // unique id
+        title,
+        body,
+        platformChannelSpecifics,
+      );
+    } catch (e) {
+      debugPrint('Gagal memicu notifikasi sistem: $e');
+    }
+  }
+
+  void _setupNotificationRealtimeListener(String userId) {
+    _notificationSubscription?.cancel();
+    _notificationSubscription = Supabase.instance.client
+        .from('notifikasi')
+        .stream(primaryKey: ['id_notifikasi'])
+        .eq('id_user', userId)
+        .listen((List<Map<String, dynamic>> notifs) {
+          if (!mounted) return;
+          if (notifs.isNotEmpty) {
+            final latestNotif = notifs.first;
+            final bool isRead = latestNotif['status_dibaca'] ?? false;
+            final createdAtStr = latestNotif['created_at'];
+            if (!isRead && createdAtStr != null) {
+              final createdAt = DateTime.tryParse(createdAtStr);
+              if (createdAt != null) {
+                // Membandingkan dengan konversi UTC agar terhindar dari perbedaan zona waktu lokal device (WIB/WITA/WIT)
+                final diffInSeconds = DateTime.now().toUtc().difference(createdAt.toUtc()).inSeconds.abs();
+                if (diffInSeconds < 15) {
+                  // Tampilkan snackbar in-app sebagai popup notifikasi
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF004D40), // Teal warna tema KosKu
+                      duration: const Duration(seconds: 4),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      content: Row(
+                        children: [
+                          const Icon(Icons.notifications_active, color: Color(0xFFFFA834)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  latestNotif['judul'] ?? 'Notifikasi Baru',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  latestNotif['pesan'] ?? '',
+                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      action: SnackBarAction(
+                        label: 'LIHAT',
+                        textColor: const Color(0xFFFFA834),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/notifications');
+                        },
+                      ),
+                    ),
+                  );
+
+                  // Tampilkan notifikasi sistem bersuara di HP
+                  _showSystemNotification(
+                    latestNotif['judul'] ?? 'Notifikasi Baru',
+                    latestNotif['pesan'] ?? '',
+                  );
+                }
+              }
+            }
+          }
+        });
+  }
+
+  void _cancelNotificationRealtimeListener() {
+    _notificationSubscription?.cancel();
+    _notificationSubscription = null;
   }
 
   void _checkInitialSession() {
@@ -106,6 +241,10 @@ class _AuthGateState extends State<AuthGate> {
       _roleFuture = session == null ? null : _getUserRole(session.user);
       _isLoading = false;
     });
+
+    if (session != null) {
+      _setupNotificationRealtimeListener(session.user.id);
+    }
   }
 
   void _listenToAuthChanges() {
@@ -120,12 +259,19 @@ class _AuthGateState extends State<AuthGate> {
             ? null
             : _getUserRole(data.session!.user);
       });
+
+      if (data.session != null) {
+        _setupNotificationRealtimeListener(data.session!.user.id);
+      } else {
+        _cancelNotificationRealtimeListener();
+      }
     });
   }
 
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _cancelNotificationRealtimeListener();
     super.dispose();
   }
 
