@@ -145,15 +145,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildBeranda(BuildContext context, Color primaryColor) {
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
-    final adminName = user?.userMetadata?['nama_lengkap'] ?? 'Admin';
-    final namaKos = user?.userMetadata?['nama_kos'] ?? 'KosKu';
     final adminId = user?.id;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: client
-          .from('kamar')
-          .stream(primaryKey: ['id_kamar'])
+          .from('profil_admin')
+          .stream(primaryKey: ['id_admin'])
           .eq('id_admin', adminId ?? ''),
+      builder: (context, adminSnapshot) {
+        String adminName = user?.userMetadata?['nama_lengkap'] ?? 'Admin';
+        String namaKos = user?.userMetadata?['nama_kos'] ?? 'KosKu';
+
+        if (adminSnapshot.hasData && adminSnapshot.data!.isNotEmpty) {
+          final adminData = adminSnapshot.data!.first;
+          adminName = adminData['nama_lengkap'] ?? adminName;
+          namaKos = adminData['nama_kost'] ?? namaKos;
+        }
+
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: client
+              .from('kamar')
+              .stream(primaryKey: ['id_kamar'])
+              .eq('id_admin', adminId ?? ''),
       builder: (context, kamarSnapshot) {
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: client.from('sewa').stream(primaryKey: ['id_sewa']),
@@ -276,16 +289,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 2),
-                                          ),
-                                          child: const CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.white24,
-                                            child: Icon(Icons.person, color: Colors.white),
-                                          ),
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              onPressed: () {
+                                                Navigator.pushNamed(context, '/notifications');
+                                              },
+                                              icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: Colors.white, width: 2),
+                                              ),
+                                              child: const CircleAvatar(
+                                                radius: 20,
+                                                backgroundColor: Colors.white24,
+                                                child: Icon(Icons.person, color: Colors.white),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -675,6 +699,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           },
         );
+      },
+    );
       },
     );
   }

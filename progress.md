@@ -1,310 +1,76 @@
-# 📌 PRD & Checklist Pembagian Tugas Proyek KosKu
+# 📌 Progress & Pembagian Tugas Pengembangan KosKu
 
-**Status Proyek:** 🛠️ Tahap Pengembangan Sisi Admin  
-**Database:** Supabase Realtime & PostgreSQL
+Berikut adalah pembagian tugas pengembangan aplikasi KosKu berdasarkan modul/folder. 
 
----
+Tim silakan mengisi nama dan status di masing-masing modul pada bagian heading menggunakan format: **`[Nama, Status]`** (Contoh: `[Vikri, Selesai]` atau `[Faiz, Selesai]`).
 
-# 👥 Tim & Pembagian Tugas
+## rancangan desain aplikasi / ui `[Nama, Status]`
+berisi terkait rancangan desain aplikasi / ui, untuk mempermudah pengerjaan kedepannya
 
-## 👨‍💻 Vikri (Gatekeeper / Admin)
-
-Bertanggung jawab terhadap:
-
-- Pengembangan seluruh fitur **Admin/Pemilik Kos**
-- Struktur database utama
-- Integrasi Supabase
-- Routing pada `main.dart`
-- Review dan merge kode
-- Push ke repository GitHub utama
+## manajemen database `[vikri, done]`
+berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepannya
 
 ---
 
-## 👨‍💻 Rekan Kelompok (Sisi User)
-
-Bertanggung jawab terhadap:
-
-- Seluruh fitur **User/Anak Kos**
-- Membuat file baru pada folder:
-
-```text
-lib/screens/user/
-```
-
-Tidak diperbolehkan mengubah:
-
-- `main.dart`
-- Folder `admin/`
-- Struktur routing utama
+## 🔒 1. Modul Otentikasi (`lib/screens/auth/`) ➡️ `[vikri, done]`
+*   `login_screen.dart` (Halaman Masuk)
+*   `register_screen.dart` (Daftar Akun Admin/Pemilik)
+*   `register_penghuni_screen.dart` (Daftar Akun Penghuni)
+*   `pilih_role_screen.dart` (Pilih Peran Akun)
+*   `forgot_password_screen.dart` (Minta OTP Reset Sandi)
+*   `verify_otp_screen.dart` (Input & Validasi OTP)
+*   `reset_password_screen.dart` (Buat Kata Sandi Baru)
 
 ---
 
-# 🏗️ Struktur Folder Proyek
+## 👑 2. Fitur Admin/Pengelola (`lib/screens/admin/`)
 
-```text
-lib/
-├── main.dart                     # Pusat Routing (Vikri)
-├── models/
-└── screens/
-    ├── auth/
-    │   ├── login_screen.dart
-    │   ├── register_screen.dart
-    │   └── pilih_role_screen.dart
-    │
-    ├── admin/                    # Porsi Vikri
-    │   ├── kamar/
-    │   │   ├── kamar_list_screen.dart
-    │   │   ├── kamar_form_screen.dart
-    │   │   ├── detail_kamar_screen.dart
-    │   │   └── konfirmasi_penghuni_screen.dart
-    │   │
-    │   ├── transaksi/
-    │   │   ├── daftar_transaksi_screen.dart
-    │   │   ├── detail_transaksi_screen.dart
-    │   │   ├── tambah_transaksi_dialog.dart
-    │   │   └── preview_invoice_screen.dart
-    │   │
-    │   └── buku_kas/
-    │       ├── buku_kas_screen.dart
-    │       ├── pengeluaran_form.dart
-    │       └── detail_pengeluaran_screen.dart
-    │
-    └── user/                     # Porsi Rekan Kelompok
-        ├── join/
-        ├── dashboard/
-        └── invoice/
-```
+### 🚪 Modul dashboard (`admin/dashboard/`) ➡️ `[Nama, Status]`
+
+### 🚪 Modul Kamar (`admin/kamar/`) ➡️ `[Nama, Status]`
+*   `kamar_list_screen.dart` (Daftar Semua Kamar)
+*   `kamar_form_screen.dart` (Tambah/Edit Kamar Baru)
+*   `kamar_detail_screen.dart` (Detail Kamar & Manajemen Penghuni)
+*   `detail_kamar_screen.dart` (Detail Informasi Kamar)
+*   `konfirmasi_penghuni_screen.dart` (Persetujuan Gabung Kos)
+
+### 💸 Modul Transaksi (`admin/transaksi/`) ➡️ `[Nama, Status]`
+*   `daftar_transaksi_screen.dart` (Daftar Transaksi Kos)
+*   `transaksi_detail_screen.dart` (Detail Transaksi & Bukti Bayar)
+*   `tambah_transaksi_screen.dart` (Buat Invoice Baru)
+*   `preview_invoice_screen.dart` (Cetak/Bagikan PDF Invoice)
+
+### 📒 Modul Buku Kas (`admin/buku_kas/`) ➡️ `[Nama, Status]`
+*   `buku_kas_screen.dart` (Laporan Arus Kas Masuk & Keluar)
+*   `pengeluaran_form.dart` (Pencatatan Biaya Pengeluaran)
+*   `detail_pengeluaran_screen.dart` (Detail Riwayat Pengeluaran)
+
+### 👤 Modul Profil Admin (`admin/profile/`) ➡️ `[Nama, Status]`
+*   `profile_screen.dart` (Profil Admin & Uji Coba Suara Notifikasi)
+*   `edit_profile_screen.dart` (Ubah Biodata & Nama Kost)
 
 ---
 
-# ✅ Checklist Progress Pengembangan
+## 👥 3. Fitur Penyewa/User (`lib/screens/user/`)
 
-> Ganti `[ ]` menjadi `[v]` setelah fitur selesai dikembangkan, diuji, dan siap digunakan.
+### 🏠 Modul Dashboard (`user/dashboard/`) ➡️ `[vikri, done]`
+*   `dashboard_penghuni_screen.dart` (Menu Utama & Informasi Jatuh Tempo)
 
----
+### 🔑 Modul Join (`user/join/`) ➡️ `[Nama, Status]`
+*   `input_kode_screen.dart` (Masukkan Token Pendaftaran Kamar)
 
-# 🏢 FASE 1 — Admin & Fondasi Database
+### 🧾 Modul Tagihan & Invoice (`user/tagihan/`) ➡️ `[Nama, Status]`
+*   `tagihan_screen.dart` (Riwayat Histori Seluruh Pembayaran)
+*   `detail_tagihan_screen.dart` (Form Upload Bukti Transfer Bank)
+*   `invoice_penghuni_screen.dart` (Tampilan Lembar Invoice Tagihan)
 
-## 📂 Modul Kamar (`lib/screens/admin/kamar/`)
-
-### Manajemen Kamar
-
-- [v] Kamar List Screen
-- [v] Kamar Form Screen
-- [v] Detail Kamar (Kondisi Kosong)
-- [v] Detail Kamar (Kondisi Terisi)
-
-### Konfirmasi Penghuni
-
-- [ ] Konfirmasi Penghuni Screen
-- [ ] Tombol **Setujui**
-  - ubah status request menjadi **Disetujui**
-  - ubah status kamar menjadi **Terisi**
-  - otomatis insert ke tabel **sewa**
-
-- [ ] Tombol **Tolak**
-  - ubah status request menjadi **Ditolak**
+### 👤 Modul Profil Penyewa (`user/profil/`) ➡️ `[Nama, Status]`
+*   `profil_penghuni_screen.dart` (Profil Penyewa & Uji Coba Suara Notifikasi)
+*   `lengkapi_data_diri_screen.dart` (Unggah KTP & Lengkapi Biodata)
 
 ---
 
-## 💰 Modul Transaksi (`lib/screens/admin/transaksi/`)
-
-- [ ] Daftar Transaksi Screen
-
-- [ ] Detail Transaksi Screen
-  - review bukti transfer
-  - konfirmasi pembayaran lunas
-
-- [ ] Tambah Transaksi Dialog
-  - membuat invoice bulanan
-  - biaya tambahan
-
-- [ ] Preview Invoice
-  - siap cetak
-  - siap dibagikan ke WhatsApp
-
----
-
-## 📊 Modul Buku Kas (`lib/screens/admin/buku_kas/`)
-
-- [ ] Buku Kas Screen
-  - total pemasukan
-  - total pengeluaran
-  - saldo
-
-- [ ] Form Pengeluaran
-
-- [ ] Detail Pengeluaran
-
----
-
-# 👤 FASE 2 — User / Anak Kos
-
-*(Dikerjakan setelah fondasi Admin stabil.)*
-
----
-
-## 🏠 Join Kos (`lib/screens/user/join/`)
-
-- [ ] Join Kos Screen
-
-- [ ] Validasi Token Kamar
-
-- [ ] Kirim data ke tabel `request_join`
-  - status awal = **Menunggu Konfirmasi**
-
----
-
-## 📱 Dashboard User (`lib/screens/user/dashboard/`)
-
-- [ ] Dashboard User
-  - nama kos
-  - nomor kamar
-  - kontak pemilik
-  - status tagihan
-
-- [ ] Lengkapi Profil
-  - NIK
-  - Foto KTP
-  - Nomor WhatsApp
-
----
-
-## 🧾 Invoice User (`lib/screens/user/invoice/`)
-
-- [ ] Daftar Tagihan
-
-- [ ] Detail Tagihan
-
-- [ ] Upload Bukti Transfer
-  - upload ke Supabase Storage
-
----
-
-# 🗄️ Flow Database
-
-```text
-Admin
-   │
-   ▼
-Tabel kamar
-   │
-Generate Token
-   │
-   ▼
-User memasukkan token
-   │
-   ▼
-request_join
-(status = Menunggu)
-   │
-   ▼
-Admin Konfirmasi
-   │
-   ├── Ditolak
-   │
-   └── Disetujui
-          │
-          ├── kamar.status = Terisi
-          └── insert ke tabel sewa
-                     │
-                     ▼
-             Generate Invoice
-                     │
-                     ▼
-                 invoice
-                     │
-                     ▼
-          User Upload Bukti Transfer
-                     │
-                     ▼
-           Admin Verifikasi Pembayaran
-                     │
-                     ▼
-               status = Lunas
-                     │
-                     ▼
-              Masuk Buku Kas
-```
-
----
-
-# 🚨 Aturan Git & Kolaborasi
-
-## File Global
-
-Hanya **Vikri** yang boleh mengubah:
-
-```text
-lib/main.dart
-```
-
-Tujuannya untuk menghindari merge conflict pada routing aplikasi.
-
----
-
-## File Baru
-
-Rekan kelompok hanya boleh membuat file di dalam:
-
-```text
-lib/screens/user/
-```
-
-Tidak diperbolehkan mengubah:
-
-- Folder `admin`
-- `main.dart`
-- konfigurasi routing
-
----
-
-## Mekanisme Merge
-
-1. Rekan membuat fitur.
-2. Commit ke branch masing-masing.
-3. Push ke GitHub.
-4. Vikri melakukan review.
-5. Merge ke branch utama.
-
----
-
-## Testing
-
-Pengujian dilakukan menggunakan:
-
-- Supabase Dashboard
-- Table Editor
-- Realtime Database
-- Supabase Storage
-
-Seluruh manipulasi data seperti:
-
-- `request_join`
-- `invoice`
-- `pengeluaran`
-- `sewa`
-
-dapat diuji langsung melalui dashboard Supabase.
-
----
-
-# 📌 Status Progress
-
-## Admin
-
-- 🟩 Modul Kamar : **4/7 selesai**
-- 🟨 Modul Transaksi : **0/4**
-- 🟨 Modul Buku Kas : **0/3**
-
----
-
-## User
-
-- 🟨 Join Kos : **0/3**
-- 🟨 Dashboard : **0/2**
-- 🟨 Invoice : **0/3**
-
----
-
-**Total Progress:** **4 / 19 fitur selesai** 🚀
+## 🔔 4. Layanan Sistem & Notifikasi ➡️ `[vikri, sudah muncul, tp masih belum bisa menampilkan notifikasi by sistem]`
+*   `lib/services/notification_service.dart` (Pusat API / Logika Notifikasi Database)
+*   `lib/screens/notification/notification_list_screen.dart` (Layar Riwayat Log Notifikasi)
+*   `lib/main.dart` (Pusat Navigasi & Listener Notifikasi Realtime HP)

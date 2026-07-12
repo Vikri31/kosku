@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'pilih_role_screen.dart';
-import '../admin/dashboard/dashboard_screen.dart';
-import '../user/dashboard/dashboard_penghuni_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
   bool _isPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleUpdatePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -33,82 +32,28 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
-
+      final newPassword = _passwordController.text.trim();
       final client = Supabase.instance.client;
-      final response = await client.auth.signInWithPassword(
-        email: email,
-        password: password,
+
+      // Perbarui kata sandi di user profile (aktif karena sesi valid pasca OTP)
+      await client.auth.updateUser(
+        UserAttributes(password: newPassword),
       );
 
-      final user = response.user;
-      if (user == null) {
-        throw Exception('Gagal memuat profil pengguna.');
-      }
-
-      // Query database table for role
-      String? role;
-      try {
-        final detail = await client
-            .from('detail_penyewa')
-            .select()
-            .eq('id_user', user.id)
-            .maybeSingle();
-
-        if (detail != null && detail['role'] != null) {
-          role = detail['role'].toString();
-        }
-      } catch (_) {
-        // Suppress and fallback to metadata
-      }
-
-      if (role == null) {
-        final metadata = user.userMetadata;
-        if (metadata != null && metadata['role'] != null) {
-          role = metadata['role'].toString();
-        } else {
-          // If metadata has 'nama_kos', assume they are admin/pemilik
-          if (metadata != null && metadata.containsKey('nama_kos')) {
-            role = 'pemilik';
-          }
-        }
-      }
+      // Keluar dari sesi login pasca update password
+      await client.auth.signOut();
 
       if (mounted) {
-        if (role == 'admin' || role == 'pemilik') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login berhasil!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          );
-        } else if (role == 'user' || role == 'penghuni') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login berhasil!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardPenghuniScreen()),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mengidentifikasi Role Akun Anda.'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kata sandi baru berhasil disimpan! Silakan login kembali.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Arahkan ke layar login utama dan hapus seluruh tumpukan navigasi sebelumnya
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -145,6 +90,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false, // Tidak bisa kembali karena sesi OTP sudah terpakai
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -166,131 +116,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // --- Logo KosKu ---
-                      Image.asset(
-                        'assets/images/icon_kosku.jpeg',
-                        height: 90,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.home_work,
-                            size: 45,
-                            color: primaryColor,
-                          ),
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'KosKu',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                        child: const Icon(
+                          Icons.lock_open_rounded,
+                          size: 45,
                           color: primaryColor,
-                          letterSpacing: 0.5,
                         ),
                       ),
+                      const SizedBox(height: 20),
                       const Text(
-                        'kelola Kos Lebih Mudah',
+                        'Kata Sandi Baru',
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // --- Header Text ---
-                      const Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Selamat Datang',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2C3E50),
-                          ),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E50),
                         ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Kelola properti dan penghuni kos dengan mudah.',
+                        'Masukkan kata sandi baru Anda untuk memperbarui akun.',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Colors.grey,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 24),
-
-                      // --- Form Field: Email ---
+                      const SizedBox(height: 32),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Alamat Email',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          hintText: 'Masukkan email anda',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                          prefixIcon: const Icon(
-                            Icons.email_outlined,
-                            color: Colors.grey,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: primaryColor,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Email tidak boleh kosong';
-                          }
-                          final emailRegExp = RegExp(
-                            r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-                          );
-                          if (!emailRegExp.hasMatch(value.trim())) {
-                            return 'Format email tidak valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // --- Form Field: Password ---
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Kata Sandi',
+                          'Kata Sandi Baru',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -303,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordController,
                         obscureText: _isPasswordObscured,
                         decoration: InputDecoration(
-                          hintText: 'Masukkan password anda',
+                          hintText: 'Minimal 6 karakter',
                           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                           prefixIcon: const Icon(
                             Icons.lock_outlined,
@@ -344,34 +205,81 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Password tidak boleh kosong';
+                            return 'Kata sandi tidak boleh kosong';
                           }
                           if (value.length < 6) {
-                            return 'Password minimal 6 karakter';
+                            return 'Kata sandi minimal 6 karakter';
                           }
                           return null;
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 20),
                       Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pushNamed('/forgot-password');
-                          },
-                          child: const Text(
-                            'Lupa Kata Sandi?',
-                            style: TextStyle(
-                              color: primaryColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Konfirmasi Kata Sandi Baru',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28),
-
-                      // --- Tombol Masuk ---
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: _isConfirmPasswordObscured,
+                        decoration: InputDecoration(
+                          hintText: 'Ulangi kata sandi baru',
+                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                          prefixIcon: const Icon(
+                            Icons.lock_outlined,
+                            color: Colors.grey,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordObscured
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                              });
+                            },
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: primaryColor,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Konfirmasi kata sandi tidak boleh kosong';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Kata sandi tidak cocok';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -384,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: _isLoading ? null : _handleLogin,
+                          onPressed: _isLoading ? null : _handleUpdatePassword,
                           child: _isLoading
                               ? const SizedBox(
                                   width: 24,
@@ -395,45 +303,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : const Text(
-                                  'Masuk',
+                                  'Perbarui Kata Sandi',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // --- Navigasi Daftar Akun ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Belum punya akun? ',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const PilihRoleScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Daftar Akun',
-                              style: TextStyle(
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),

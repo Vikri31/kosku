@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'edit_profile_screen.dart';
+import '../../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,6 +13,66 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
+  String? _dbAdminName;
+  String? _dbNamaKos;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileFromDatabase();
+  }
+
+  Future<void> _loadProfileFromDatabase() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final data = await Supabase.instance.client
+          .from('profil_admin')
+          .select()
+          .eq('id_admin', user.id)
+          .maybeSingle();
+
+      if (data != null) {
+        if (mounted) {
+          setState(() {
+            _dbAdminName = data['nama_lengkap'];
+            _dbNamaKos = data['nama_kost'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading profile from DB: $e');
+    }
+  }
+
+  void _triggerTestNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'kosku_test_channel', // id
+      'Test Notifikasi KosKu', // name
+      channelDescription: 'Channel untuk testing notifikasi suara aplikasi KosKu',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+
+    try {
+      await flutterLocalNotificationsPlugin.show(
+        999, // unique test id
+        'Uji Coba Notifikasi KosKu 🔊',
+        'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
+        platformChannelSpecifics,
+      );
+    } catch (e) {
+      debugPrint('Gagal memicu test notifikasi: $e');
+    }
+  }
 
   // Handle Logout
   Future<void> _handleLogout() async {
@@ -170,8 +232,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Get current user metadata
     final user = Supabase.instance.client.auth.currentUser;
-    final adminName = user?.userMetadata?['nama_lengkap'] ?? 'Budi Santoso';
-    final namaKos = user?.userMetadata?['nama_kos'] ?? 'Kos Makmur Jaya';
+    final adminName = _dbAdminName ?? user?.userMetadata?['nama_lengkap'] ?? 'Budi Santoso';
+    final namaKos = _dbNamaKos ?? user?.userMetadata?['nama_kos'] ?? 'Kos Makmur Jaya';
 
     // Fallback professional male avatar URL from Unsplash
     const avatarUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150';
@@ -251,8 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               builder: (context) => const EditProfileScreen(),
                             ),
                           ).then((_) {
-                            // Force rebuild when returning to show updated metadata
-                            setState(() {});
+                            _loadProfileFromDatabase();
                           });
                         },
                         child: Container(
@@ -401,8 +462,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (context) => const EditProfileScreen(),
                   ),
                 ).then((_) {
-                  // Force rebuild when returning to show updated metadata
-                  setState(() {});
+                  _loadProfileFromDatabase();
                 });
               },
             ),
@@ -414,6 +474,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Tentang Aplikasi',
               subtitle: 'Versi 1.2.0, Syarat & Ketentuan',
               onTap: _showAboutDialog,
+            ),
+            const SizedBox(height: 12),
+
+            // Coba Notifikasi Sistem Card
+            _buildOptionCard(
+              icon: Icons.volume_up_outlined,
+              title: 'Coba Notifikasi Sistem',
+              subtitle: 'Uji suara dan popup notifikasi HP',
+              onTap: _triggerTestNotification,
             ),
             const SizedBox(height: 12),
 

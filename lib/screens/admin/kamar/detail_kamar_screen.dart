@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'konfirmasi_penghuni_screen.dart';
+import '../transaksi/tambah_transaksi_screen.dart';
 
 class DetailKamarScreen extends StatefulWidget {
   final int idKamar;
 
-  const DetailKamarScreen({
-    super.key,
-    required this.idKamar,
-  });
+  const DetailKamarScreen({super.key, required this.idKamar});
 
   @override
   State<DetailKamarScreen> createState() => _DetailKamarScreenState();
@@ -129,7 +127,9 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Ya, Keluarkan'),
@@ -159,7 +159,9 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Penyewa berhasil dikeluarkan dan status kamar diubah.'),
+              content: Text(
+                'Penyewa berhasil dikeluarkan dan status kamar diubah.',
+              ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
             ),
@@ -170,138 +172,6 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Gagal memproses: $e'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isLoadingSewa = false);
-        }
-      }
-    }
-  }
-
-  Future<void> _tambahPembayaranDialog(int idSewa) async {
-    final formKey = GlobalKey<FormState>();
-    final nomorInvoiceController = TextEditingController(
-      text: 'INV-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}',
-    );
-    final totalTagihanController = TextEditingController();
-    final periodeSewaController = TextEditingController(
-      text: '${DateTime.now().month}/${DateTime.now().year}',
-    );
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Tambah Pembayaran (Invoice)',
-          style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nomorInvoiceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nomor Invoice',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Harap isi nomor invoice' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: periodeSewaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Periode Sewa (Bulan/Tahun)',
-                    border: OutlineInputBorder(),
-                    hintText: 'Misal: 07/2026',
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Harap isi periode sewa' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: totalTagihanController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Total Tagihan (Rp)',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Harap isi total tagihan';
-                    if (int.tryParse(v) == null) return 'Harap isi dengan angka';
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx, true);
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true && mounted) {
-      setState(() => _isLoadingSewa = true);
-      try {
-        final client = Supabase.instance.client;
-        final total = int.parse(totalTagihanController.text.trim());
-        final today = DateTime.now().toIso8601String().split('T').first;
-        final dueDate = DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T').first;
-
-        await client.from('invoice').insert({
-          'id_sewa': idSewa,
-          'nomor_invoice': nomorInvoiceController.text.trim(),
-          'periode_sewa': periodeSewaController.text.trim(),
-          'biaya_sewa_pokok': total,
-          'biaya_listrik': 0,
-          'biaya_kebersihan': 0,
-          'total_tagihan': total,
-          'status_pembayaran': 'Belum Bayar',
-          'tanggal_dibuat': today,
-          'tanggal_jatuh_tempo': dueDate,
-        });
-
-        await _loadSewaAndInvoices();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tagihan baru berhasil dibuat!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal membuat tagihan: $e'),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
             ),
@@ -351,10 +221,14 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
             .eq('id_kamar', widget.idKamar),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: primaryColor));
+            return const Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
           }
 
-          if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+          if (snapshot.hasError ||
+              snapshot.data == null ||
+              snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
                 'Data kamar tidak ditemukan atau gagal dimuat.',
@@ -399,15 +273,22 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                color: isKosong ? const Color(0xFFE8F5E9) : const Color(0xFFE0F2F1),
+                                color: isKosong
+                                    ? const Color(0xFFE8F5E9)
+                                    : const Color(0xFFE0F2F1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 statusKamar.toUpperCase(),
                                 style: TextStyle(
-                                  color: isKosong ? const Color(0xFF2E7D32) : const Color(0xFF00796B),
+                                  color: isKosong
+                                      ? const Color(0xFF2E7D32)
+                                      : const Color(0xFF00796B),
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -438,7 +319,9 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                       padding: const EdgeInsets.all(20.0),
                       child: Card(
                         color: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         elevation: 2,
                         child: Padding(
                           padding: const EdgeInsets.all(20.0),
@@ -455,11 +338,16 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                               ),
                               const SizedBox(height: 12),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF0F4F8),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blueGrey.shade100),
+                                  border: Border.all(
+                                    color: Colors.blueGrey.shade100,
+                                  ),
                                 ),
                                 child: Text(
                                   kodeKamar,
@@ -473,7 +361,8 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                               ),
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
                                   ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
@@ -486,10 +375,16 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                     icon: const Icon(Icons.copy, size: 18),
                                     label: const Text('Salin Kode'),
                                     onPressed: () {
-                                      Clipboard.setData(ClipboardData(text: kodeKamar));
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      Clipboard.setData(
+                                        ClipboardData(text: kodeKamar),
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Token kamar disalin ke clipboard!'),
+                                          content: Text(
+                                            'Token kamar disalin ke clipboard!',
+                                          ),
                                           behavior: SnackBarBehavior.floating,
                                           backgroundColor: primaryColor,
                                         ),
@@ -499,14 +394,17 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                   OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: primaryColor,
-                                      side: const BorderSide(color: primaryColor),
+                                      side: const BorderSide(
+                                        color: primaryColor,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
                                     icon: const Icon(Icons.refresh, size: 18),
                                     label: const Text('Generate Ulang'),
-                                    onPressed: () => _generateUlangKode(kodeKamar),
+                                    onPressed: () =>
+                                        _generateUlangKode(kodeKamar),
                                   ),
                                 ],
                               ),
@@ -536,22 +434,34 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                           .stream(primaryKey: ['id_request'])
                           .eq('id_kamar', widget.idKamar),
                       builder: (context, requestSnapshot) {
-                        if (requestSnapshot.connectionState == ConnectionState.waiting) {
+                        if (requestSnapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Padding(
                             padding: EdgeInsets.all(20.0),
-                            child: Center(child: CircularProgressIndicator(color: primaryColor)),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: primaryColor,
+                              ),
+                            ),
                           );
                         }
 
                         final allRequests = requestSnapshot.data ?? [];
                         final requests = allRequests
-                            .where((req) => req['status_request'] == 'Menunggu Konfirmasi')
+                            .where(
+                              (req) =>
+                                  req['status_request'] ==
+                                  'Menunggu Konfirmasi',
+                            )
                             .toList();
 
                         if (requests.isEmpty) {
                           return Container(
                             margin: const EdgeInsets.all(20),
-                            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 36,
+                              horizontal: 20,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -559,11 +469,18 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                             child: Center(
                               child: Column(
                                 children: [
-                                  Icon(Icons.person_add_disabled_outlined, size: 48, color: Colors.grey.shade400),
+                                  Icon(
+                                    Icons.person_add_disabled_outlined,
+                                    size: 48,
+                                    color: Colors.grey.shade400,
+                                  ),
                                   const SizedBox(height: 12),
                                   const Text(
                                     'Belum ada pengajuan masuk dari calon penghuni.',
-                                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -584,14 +501,21 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
 
                             return Card(
                               color: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               elevation: 1,
                               margin: const EdgeInsets.only(bottom: 12),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.all(16),
                                 leading: CircleAvatar(
-                                  backgroundColor: primaryColor.withValues(alpha: 0.1),
-                                  child: const Icon(Icons.person_add_alt_1, color: primaryColor),
+                                  backgroundColor: primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_add_alt_1,
+                                    color: primaryColor,
+                                  ),
                                 ),
                                 title: const Text(
                                   'Calon Penghuni Baru',
@@ -599,7 +523,10 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                 ),
                                 subtitle: Text(
                                   'Mengajukan pada: $dateStr',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                                 trailing: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
@@ -613,9 +540,10 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => KonfirmasiPenghuniScreen(
-                                          idRequest: idRequest,
-                                        ),
+                                        builder: (context) =>
+                                            KonfirmasiPenghuniScreen(
+                                              idRequest: idRequest,
+                                            ),
                                       ),
                                     ).then((_) => _loadSewaAndInvoices());
                                   },
@@ -634,7 +562,9 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                     if (_isLoadingSewa)
                       const Padding(
                         padding: EdgeInsets.all(40.0),
-                        child: Center(child: CircularProgressIndicator(color: primaryColor)),
+                        child: Center(
+                          child: CircularProgressIndicator(color: primaryColor),
+                        ),
                       )
                     else if (_sewaData == null)
                       Container(
@@ -658,7 +588,9 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                         padding: const EdgeInsets.all(20.0),
                         child: Card(
                           color: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           elevation: 2,
                           child: Padding(
                             padding: const EdgeInsets.all(20.0),
@@ -669,16 +601,24 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                   children: [
                                     CircleAvatar(
                                       radius: 28,
-                                      backgroundColor: primaryColor.withValues(alpha: 0.1),
-                                      child: const Icon(Icons.person, size: 30, color: primaryColor),
+                                      backgroundColor: primaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 30,
+                                        color: primaryColor,
+                                      ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _sewaData!['penyewa']?['nama_lengkap'] ?? 'Penyewa',
+                                            _sewaData!['penyewa']?['nama_lengkap'] ??
+                                                'Penyewa',
                                             style: const TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
@@ -688,7 +628,10 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                           const SizedBox(height: 4),
                                           Text(
                                             'WhatsApp: ${_sewaData!['penyewa']?['nomor_whatsapp'] ?? '-'}',
-                                            style: const TextStyle(fontSize: 14, color: Colors.grey),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -697,23 +640,35 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                 ),
                                 const Divider(height: 32),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('NIK KTP:', style: TextStyle(color: Colors.grey)),
+                                    const Text(
+                                      'NIK KTP:',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
                                     Text(
                                       _sewaData!['penyewa']?['nik'] ?? '-',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('Tanggal Masuk:', style: TextStyle(color: Colors.grey)),
+                                    const Text(
+                                      'Tanggal Masuk:',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
                                     Text(
                                       _sewaData!['tanggal_masuk'] ?? '-',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -727,14 +682,36 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primaryColor,
                                           foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                         ),
-                                        icon: const Icon(Icons.add_card, size: 18),
+                                        icon: const Icon(
+                                          Icons.add_card,
+                                          size: 18,
+                                        ),
                                         label: const Text('Tambah Pembayaran'),
-                                        onPressed: () => _tambahPembayaranDialog(_sewaData!['id_sewa']),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  TambahTransaksiScreen(
+                                                    initialSewaId:
+                                                        _sewaData!['id_sewa'],
+                                                  ),
+                                            ),
+                                          ).then((value) {
+                                            if (value == true) {
+                                              _loadSewaAndInvoices();
+                                            }
+                                          });
+                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -742,13 +719,22 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                       child: OutlinedButton.icon(
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red,
-                                          side: const BorderSide(color: Colors.red),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          side: const BorderSide(
+                                            color: Colors.red,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                         ),
-                                        icon: const Icon(Icons.exit_to_app, size: 18),
+                                        icon: const Icon(
+                                          Icons.exit_to_app,
+                                          size: 18,
+                                        ),
                                         label: const Text('Keluarkan Penyewa'),
                                         onPressed: () => _keluarkanPenyewa(
                                           _sewaData!['id_sewa'],
@@ -780,7 +766,10 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
 
                       if (_invoices.isEmpty)
                         Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -803,19 +792,24 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                             final inv = _invoices[index];
                             final noInv = inv['nomor_invoice'] ?? '-';
                             final total = inv['total_tagihan'] ?? 0;
-                            final statusBayar = inv['status_pembayaran'] ?? 'Belum Bayar';
+                            final statusBayar =
+                                inv['status_pembayaran'] ?? 'Belum Bayar';
                             final isLunas = statusBayar == 'Lunas';
                             final periode = inv['periode_sewa'] ?? '';
 
                             return Card(
                               color: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               elevation: 1,
                               margin: const EdgeInsets.only(bottom: 10),
                               child: ListTile(
                                 title: Text(
                                   noInv,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 subtitle: Text(
                                   'Periode: $periode • Jatuh Tempo: ${inv['tanggal_jatuh_tempo'] ?? '-'}',
@@ -827,19 +821,29 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                                   children: [
                                     Text(
                                       _formatRupiah(total),
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: isLunas ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                                        color: isLunas
+                                            ? const Color(0xFFE8F5E9)
+                                            : const Color(0xFFFFEBEE),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         statusBayar.toUpperCase(),
                                         style: TextStyle(
-                                          color: isLunas ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                                          color: isLunas
+                                              ? const Color(0xFF2E7D32)
+                                              : const Color(0xFFC62828),
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -857,10 +861,15 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
 
                   // --- CARD 3: FASILITAS KAMAR ---
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     child: Card(
                       color: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 1,
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
@@ -883,17 +892,25 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                             ),
                             const SizedBox(height: 16),
                             if (fasilitas.isEmpty)
-                              const Text('Tidak ada info fasilitas.', style: TextStyle(color: Colors.grey))
+                              const Text(
+                                'Tidak ada info fasilitas.',
+                                style: TextStyle(color: Colors.grey),
+                              )
                             else
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: fasilitas.map((item) {
                                   return Chip(
-                                    label: Text(item.toString(), style: const TextStyle(fontSize: 12)),
+                                    label: Text(
+                                      item.toString(),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                     backgroundColor: const Color(0xFFF0F4F8),
                                     side: BorderSide.none,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   );
                                 }).toList(),
                               ),

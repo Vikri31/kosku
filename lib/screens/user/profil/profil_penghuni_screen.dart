@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../dashboard/dashboard_penghuni_screen.dart';
+import '../../../main.dart';
 
 const Color _kPrimary = Color(0xFF1A7C6A);
 const Color _kBg = Color(0xFFF4F6F7);
@@ -21,6 +23,8 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
   bool _statusLunas = true;
   String? _avatarUrl;
   bool _isDataLengkap = false;
+  int? _idSewa;
+  int? _idKamar;
 
   static const String _appVersion = '1.0.0 (Stable)';
 
@@ -49,6 +53,8 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         _statusTagihan = '-';
         _statusLunas = true;
         _isDataLengkap = false;
+        _idSewa = null;
+        _idKamar = null;
 
         if (user.userMetadata != null) {
           _isDataLengkap = user.userMetadata!['data_lengkap'] == true;
@@ -86,8 +92,10 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                   .maybeSingle();
 
               if (sewa != null) {
-                final idKamar = sewa['id_kamar'];
-                final idSewa = sewa['id_sewa'];
+                _idSewa = sewa['id_sewa'];
+                _idKamar = sewa['id_kamar'];
+                final int idKamar = _idKamar!;
+                final int idSewa = _idSewa!;
                 final kamar = await client
                     .from('kamar')
                     .select()
@@ -117,7 +125,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
                 if (invoices.isNotEmpty) {
                   final hasUnpaid = invoices.any(
-                    (inv) => inv['status_pembayaran'] != 'LUNAS',
+                    (inv) => inv['status_pembayaran']?.toString().toUpperCase() != 'LUNAS',
                   );
                   if (hasUnpaid) {
                     _statusLunas = false;
@@ -185,8 +193,10 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                         _buildMenuSection(context),
                         const SizedBox(height: 16),
                         // ── Tombol Pindah & Logout ────────────────────────
-                        _buildPindahButton(),
-                        const SizedBox(height: 10),
+                        if (_idSewa != null && _idKamar != null) ...[
+                          _buildPindahButton(),
+                          const SizedBox(height: 10),
+                        ],
                         _buildLogoutButton(context),
                         const SizedBox(height: 18),
                         // ── Versi App ─────────────────────────────────────
@@ -438,14 +448,46 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         icon: Icons.info_outline,
         label: 'Info Kamar Saya',
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _nomorKamar == '-'
-                    ? 'Anda belum terdaftar di kamar manapun.'
-                    : 'Anda terdaftar di $_nomorKamar - $_namaKos',
-              ),
-            ),
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: _kPrimary),
+                    SizedBox(width: 8),
+                    Text(
+                      'Info Kamar Saya',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  _nomorKamar == '-' || _nomorKamar == 'Belum terikat kos'
+                      ? 'Anda belum terdaftar di kamar manapun.'
+                      : 'Anda terdaftar di $_nomorKamar - $_namaKos.',
+                  style: const TextStyle(fontSize: 14, height: 1.4),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Tutup',
+                      style: TextStyle(
+                        color: _kPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -468,6 +510,37 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
               ),
             ],
           );
+        },
+      ),
+      _MenuItem(
+        icon: Icons.volume_up_outlined,
+        label: 'Coba Notifikasi Sistem',
+        onTap: () async {
+          const AndroidNotificationDetails androidPlatformChannelSpecifics =
+              AndroidNotificationDetails(
+            'kosku_test_channel',
+            'Test Notifikasi KosKu',
+            channelDescription: 'Channel untuk testing notifikasi suara aplikasi KosKu',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          );
+
+          const NotificationDetails platformChannelSpecifics = NotificationDetails(
+            android: androidPlatformChannelSpecifics,
+          );
+
+          try {
+            await flutterLocalNotificationsPlugin.show(
+              999,
+              'Uji Coba Notifikasi KosKu 🔊',
+              'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
+              platformChannelSpecifics,
+            );
+          } catch (e) {
+            debugPrint('Gagal memicu test notifikasi: $e');
+          }
         },
       ),
     ];
@@ -517,7 +590,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        onPressed: () {},
+        onPressed: _handlePindahKost,
         icon: const Icon(Icons.exit_to_app, color: Color(0xFFFF3B30), size: 18),
         label: const Text(
           'Pindah Kost',
@@ -529,6 +602,105 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handlePindahKost() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFFF3B30)),
+              SizedBox(width: 8),
+              Text(
+                'Konfirmasi Pindah',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Apakah Anda yakin untuk pindah kos? Semua status sewa aktif Anda akan dinyatakan selesai.',
+            style: TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Ya, Pindah',
+                style: TextStyle(color: Color(0xFFFF3B30), fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      if (_idSewa == null || _idKamar == null) return;
+
+      // Tampilkan progress indicator dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: _kPrimary),
+        ),
+      );
+
+      try {
+        final client = Supabase.instance.client;
+
+        // 1. Update status sewa to Selesai
+        await client
+            .from('sewa')
+            .update({'status_sewa': 'Selesai'})
+            .eq('id_sewa', _idSewa!);
+
+        // 2. Update status kamar to Kosong
+        await client
+            .from('kamar')
+            .update({'status_kamar': 'Kosong'})
+            .eq('id_kamar', _idKamar!);
+
+        if (mounted) {
+          // Tutup progress indicator dialog
+          Navigator.of(context).pop();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Berhasil keluar dari kos. Status kamar diubah menjadi Kosong.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Muat ulang data profil
+          _loadProfileData();
+        }
+      } catch (e) {
+        if (mounted) {
+          // Tutup progress indicator dialog
+          Navigator.of(context).pop();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal melakukan pindah kos: $e'),
+              backgroundColor: const Color(0xFFFF3B30),
+            ),
+          );
+        }
+      }
+    }
   }
 
   // ── Tombol Logout ────────────────────────────────────────────────────────
