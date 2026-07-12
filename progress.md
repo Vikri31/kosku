@@ -8,7 +8,7 @@ Tim silakan mengisi nama dan status di masing-masing modul pada bagian heading m
 berisi terkait rancangan desain aplikasi / ui, untuk mempermudah pengerjaan kedepannya
 
 ## manajemen database `[vikri, done]`
-berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepannya
+berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepannyaa
 
 ---
 
