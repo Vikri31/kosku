@@ -34,7 +34,7 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 *   `detail_kamar_screen.dart` (Detail Informasi Kamar)
 *   `konfirmasi_penghuni_screen.dart` (Persetujuan Gabung Kos)
 
-### 💸 Modul Transaksi (`admin/transaksi/`) ➡️ `[Nama, Status]`
+### 💸 Modul Transaksi (`admin/transaksi/`) ➡️ `[Aqila, Done]`
 *   `daftar_transaksi_screen.dart` (Daftar Transaksi Kos)
 *   `transaksi_detail_screen.dart` (Detail Transaksi & Bukti Bayar)
 *   `tambah_transaksi_screen.dart` (Buat Invoice Baru)
@@ -59,7 +59,7 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 ### 🔑 Modul Join (`user/join/`) ➡️ `[Nama, Status]`
 *   `input_kode_screen.dart` (Masukkan Token Pendaftaran Kamar)
 
-### 🧾 Modul Tagihan & Invoice (`user/tagihan/`) ➡️ `[Nama, Status]`
+### 🧾 Modul Tagihan & Invoice (`user/tagihan/`) ➡️ `[Aqila, Done]`
 *   `tagihan_screen.dart` (Riwayat Histori Seluruh Pembayaran)
 *   `detail_tagihan_screen.dart` (Form Upload Bukti Transfer Bank)
 *   `invoice_penghuni_screen.dart` (Tampilan Lembar Invoice Tagihan)
