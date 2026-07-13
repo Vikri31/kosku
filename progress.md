@@ -25,9 +25,9 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 
 ## 👑 2. Fitur Admin/Pengelola (`lib/screens/admin/`)
 
-### 🚪 Modul dashboard (`admin/dashboard/`) ➡️ `[Nama, Status]`
+### 🚪 Modul dashboard (`admin/dashboard/`) ➡️ `[Vikri, Done]`
 
-### 🚪 Modul Kamar (`admin/kamar/`) ➡️ `[Nama, Status]`
+### 🚪 Modul Kamar (`admin/kamar/`) ➡️ `[Vikri, Done]`
 *   `kamar_list_screen.dart` (Daftar Semua Kamar)
 *   `kamar_form_screen.dart` (Tambah/Edit Kamar Baru)
 *   `kamar_detail_screen.dart` (Detail Kamar & Manajemen Penghuni)
@@ -40,12 +40,12 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 *   `tambah_transaksi_screen.dart` (Buat Invoice Baru)
 *   `preview_invoice_screen.dart` (Cetak/Bagikan PDF Invoice)
 
-### 📒 Modul Buku Kas (`admin/buku_kas/`) ➡️ `[Nama, Status]`
+### 📒 Modul Buku Kas (`admin/buku_kas/`) ➡️ `[Vikri, Done]`
 *   `buku_kas_screen.dart` (Laporan Arus Kas Masuk & Keluar)
 *   `pengeluaran_form.dart` (Pencatatan Biaya Pengeluaran)
 *   `detail_pengeluaran_screen.dart` (Detail Riwayat Pengeluaran)
 
-### 👤 Modul Profil Admin (`admin/profile/`) ➡️ `[Nama, Status]`
+### 👤 Modul Profil Admin (`admin/profile/`) ➡️ `[Faiz, Done]`
 *   `profile_screen.dart` (Profil Admin & Uji Coba Suara Notifikasi)
 *   `edit_profile_screen.dart` (Ubah Biodata & Nama Kost)
 
@@ -56,7 +56,7 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 ### 🏠 Modul Dashboard (`user/dashboard/`) ➡️ `[vikri, done]`
 *   `dashboard_penghuni_screen.dart` (Menu Utama & Informasi Jatuh Tempo)
 
-### 🔑 Modul Join (`user/join/`) ➡️ `[Nama, Status]`
+### 🔑 Modul Join (`user/join/`) ➡️ `[Faiz, Done]`
 *   `input_kode_screen.dart` (Masukkan Token Pendaftaran Kamar)
 
 ### 🧾 Modul Tagihan & Invoice (`user/tagihan/`) ➡️ `[Aqila, Done]`
@@ -64,7 +64,7 @@ berisi terkait penetuan kebutuhan database, untuk mempermudah pengerjaan kedepan
 *   `detail_tagihan_screen.dart` (Form Upload Bukti Transfer Bank)
 *   `invoice_penghuni_screen.dart` (Tampilan Lembar Invoice Tagihan)
 
-### 👤 Modul Profil Penyewa (`user/profil/`) ➡️ `[Nama, Status]`
+### 👤 Modul Profil Penyewa (`user/profil/`) ➡️ `[Faiz, Done]`
 *   `profil_penghuni_screen.dart` (Profil Penyewa & Uji Coba Suara Notifikasi)
 *   `lengkapi_data_diri_screen.dart` (Unggah KTP & Lengkapi Biodata)
 
