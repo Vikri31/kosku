@@ -12,15 +12,24 @@ class KamarListScreen extends StatefulWidget {
 
 class _KamarListScreenState extends State<KamarListScreen> {
   String _selectedFilter = 'Semua'; // Semua, Terisi, Kosong
+  String _searchQuery = '';
+  bool _isSearchVisible = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Color _getStatusBgColor(String status) {
     switch (status) {
       case 'Terisi':
-        return const Color(0xFFE0F2F1); // Teal
+        return const Color(0xFFE0F2F1);
       case 'Kosong':
-        return const Color(0xFFE8F5E9); // Green
+        return const Color(0xFFE8F5E9);
       case 'Jatuh Tempo':
-        return const Color(0xFFFFEBEE); // Red/Pink
+        return const Color(0xFFFFEBEE);
       default:
         return Colors.grey[200]!;
     }
@@ -29,17 +38,16 @@ class _KamarListScreenState extends State<KamarListScreen> {
   Color _getStatusTextColor(String status) {
     switch (status) {
       case 'Terisi':
-        return const Color(0xFF00796B); // Teal
+        return const Color(0xFF00796B);
       case 'Kosong':
-        return const Color(0xFF2E7D32); // Green
+        return const Color(0xFF2E7D32);
       case 'Jatuh Tempo':
-        return const Color(0xFFC62828); // Red
+        return const Color(0xFFC62828);
       default:
         return Colors.grey[700]!;
     }
   }
 
-  // Helper to format currency
   String _formatRupiah(num number) {
     final str = number.toString();
     final buffer = StringBuffer();
@@ -54,7 +62,6 @@ class _KamarListScreenState extends State<KamarListScreen> {
     return 'Rp ${buffer.toString().split('').reversed.join('')}';
   }
 
-  // Future helper to get tenant's name
   Future<String> _getActiveTenantName(int idKamar) async {
     try {
       final sewaData = await Supabase.instance.client
@@ -102,9 +109,9 @@ class _KamarListScreenState extends State<KamarListScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER & FILTER ICON ---
+          // --- HEADER & SEARCH TOGGLE ---
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -116,26 +123,81 @@ class _KamarListScreenState extends State<KamarListScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.filter_list_rounded, color: Colors.black54),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.search_rounded, color: Colors.black54),
-                      onPressed: () {},
-                    ),
-                  ],
+                IconButton(
+                  icon: Icon(
+                    _isSearchVisible ? Icons.close_rounded : Icons.search_rounded,
+                    color: Colors.black54,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchVisible = !_isSearchVisible;
+                      if (!_isSearchVisible) {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      }
+                    });
+                  },
                 ),
               ],
+            ),
+          ),
+
+          // --- SEARCH BAR (Animated) ---
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 200),
+            crossFadeState: _isSearchVisible
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(height: 12),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Cari nomor atau nama kamar...',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: primaryColor, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                  ),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val.trim().toLowerCase();
+                  });
+                },
+              ),
             ),
           ),
 
           // --- HORIZONTAL FILTER CHIPS ---
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: 20, bottom: 16),
+            padding: const EdgeInsets.only(left: 20, top: 12, bottom: 16),
             child: Row(
               children: ['Semua', 'Terisi', 'Kosong', 'Jatuh Tempo'].map((filter) {
                 final isSelected = _selectedFilter == filter;
@@ -190,17 +252,37 @@ class _KamarListScreenState extends State<KamarListScreen> {
                 }
 
                 final rooms = snapshot.data ?? [];
-                // Filter rooms locally based on choice
-                final filteredRooms = rooms.where((room) {
+
+                // Filter berdasarkan status chip
+                var filteredRooms = rooms.where((room) {
                   if (_selectedFilter == 'Semua') return true;
                   return room['status_kamar'] == _selectedFilter;
                 }).toList();
 
+                // Filter berdasarkan search query (nomor atau nama kamar)
+                if (_searchQuery.isNotEmpty) {
+                  filteredRooms = filteredRooms.where((room) {
+                    final nomorKamar = (room['nomor_kamar'] ?? '').toString().toLowerCase();
+                    final namaKamar = (room['nama_kamar'] ?? '').toString().toLowerCase();
+                    return nomorKamar.contains(_searchQuery) || namaKamar.contains(_searchQuery);
+                  }).toList();
+                }
+
                 if (filteredRooms.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Tidak ada kamar dalam kategori ini.',
-                      style: TextStyle(color: Colors.grey),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 48, color: Colors.grey[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'Kamar "$_searchQuery" tidak ditemukan.'
+                              : 'Tidak ada kamar dalam kategori ini.',
+                          style: const TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -384,4 +466,3 @@ class _KamarListScreenState extends State<KamarListScreen> {
     );
   }
 }
-

@@ -49,14 +49,43 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  // Load active leases from Supabase
+  // Load active leases from Supabase (filtered by current admin)
   Future<void> _loadActiveLeases() async {
     try {
       final client = Supabase.instance.client;
+      final adminId = client.auth.currentUser?.id;
+
+      if (adminId == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // 1. Ambil id_kamar milik admin ini
+      final kamarData = await client
+          .from('kamar')
+          .select('id_kamar')
+          .eq('id_admin', adminId);
+
+      if (kamarData.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _activeLeases = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final List<int> kamarIds = (kamarData as List)
+          .map((k) => k['id_kamar'] as int)
+          .toList();
+
+      // 2. Ambil sewa aktif hanya dari kamar milik admin
       final data = await client
           .from('sewa')
           .select('*, penyewa(*), kamar(*)')
-          .eq('status_sewa', 'Aktif');
+          .eq('status_sewa', 'Aktif')
+          .inFilter('id_kamar', kamarIds);
 
       if (mounted) {
         setState(() {

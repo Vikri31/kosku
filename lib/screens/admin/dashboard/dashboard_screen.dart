@@ -297,18 +297,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               },
                                               icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
                                             ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Colors.white, width: 2),
-                                              ),
-                                              child: const CircleAvatar(
-                                                radius: 20,
-                                                backgroundColor: Colors.white24,
-                                                child: Icon(Icons.person, color: Colors.white),
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ],

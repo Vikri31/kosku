@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'edit_profile_screen.dart';
 import '../../../main.dart';
 
@@ -13,8 +15,10 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
+  bool _isUploadingPhoto = false;
   String? _dbAdminName;
   String? _dbNamaKos;
+  String? _fotoProfilUrl;
 
   @override
   void initState() {
@@ -38,11 +42,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _dbAdminName = data['nama_lengkap'];
             _dbNamaKos = data['nama_kost'];
+            _fotoProfilUrl = data['foto_profil_url'];
           });
         }
       }
     } catch (e) {
       debugPrint('Error loading profile from DB: $e');
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (image == null) return;
+
+      if (mounted) setState(() => _isUploadingPhoto = true);
+
+      final File file = File(image.path);
+      final String fileName = 'admin_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String storagePath = 'profil_admin/$fileName';
+
+      // Upload ke Supabase Storage
+      await Supabase.instance.client.storage
+          .from('foto-profil')
+          .upload(storagePath, file, fileOptions: const FileOptions(upsert: true));
+
+      // Dapatkan public URL
+      final String publicUrl = Supabase.instance.client.storage
+          .from('foto-profil')
+          .getPublicUrl(storagePath);
+
+      // Update ke tabel profil_admin
+      await Supabase.instance.client
+          .from('profil_admin')
+          .upsert({
+            'id_admin': user.id,
+            'foto_profil_url': publicUrl,
+          });
+
+      if (mounted) {
+        setState(() {
+          _fotoProfilUrl = publicUrl;
+          _isUploadingPhoto = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto profil berhasil diperbarui!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal upload foto: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -299,23 +368,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CircleAvatar(
                           radius: 54,
                           backgroundColor: Colors.grey[200],
-                          backgroundImage: const NetworkImage(avatarUrl),
-                          onBackgroundImageError: (exception, stackTrace) {
-                            // Fallback if network fails
-                          },
-                          child: const SizedBox.shrink(),
+                          backgroundImage: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
+                              ? NetworkImage(_fotoProfilUrl!) as ImageProvider
+                              : const NetworkImage(avatarUrl),
+                          onBackgroundImageError: (exception, stackTrace) {},
+                          child: _isUploadingPhoto
+                              ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                              : null,
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const EditProfileScreen(),
-                            ),
-                          ).then((_) {
-                            _loadProfileFromDatabase();
-                          });
-                        },
+                        onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
@@ -326,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           child: const Icon(
-                            Icons.edit,
+                            Icons.camera_alt_outlined,
                             color: Colors.white,
                             size: 16,
                           ),
@@ -361,7 +424,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   StreamBuilder<List<Map<String, dynamic>>>(
                     stream: Supabase.instance.client
                         .from('kamar')
-                        .stream(primaryKey: ['id_kamar']),
+                        .stream(primaryKey: ['id_kamar'])
+                        .eq('id_admin', user?.id ?? ''),
                     builder: (context, snapshot) {
                       int totalKamar = 0;
                       int terisiKamar = 0;

@@ -6,7 +6,7 @@ import 'detail_tagihan_screen.dart';
 class TagihanScreen extends StatefulWidget {
   const TagihanScreen({super.key});
 
-  static const Color _primaryColor = Color(0xFF007461);
+  static const Color _primaryColor = Color(0xFF004D40);
   static const Color _backgroundColor = Color(0xFFF4F6F7);
   static const Color _dangerColor = Color(0xFFFF3B30);
 

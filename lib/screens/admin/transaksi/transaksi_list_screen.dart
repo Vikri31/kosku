@@ -30,10 +30,57 @@ class _DaftarTransaksiScreenState extends State<DaftarTransaksiScreen> {
     setState(() => _isLoading = true);
     try {
       final client = Supabase.instance.client;
-      // Fetch invoices joined with sewa, penyewa, and kamar
+      final adminId = client.auth.currentUser?.id;
+      if (adminId == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // 1. Ambil id_kamar milik admin ini
+      final kamarData = await client
+          .from('kamar')
+          .select('id_kamar')
+          .eq('id_admin', adminId);
+
+      if (kamarData.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _invoices = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final List<int> kamarIds = (kamarData as List)
+          .map((k) => k['id_kamar'] as int)
+          .toList();
+
+      // 2. Ambil id_sewa dari kamar-kamar tersebut
+      final sewaData = await client
+          .from('sewa')
+          .select('id_sewa')
+          .inFilter('id_kamar', kamarIds);
+
+      if (sewaData.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _invoices = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final List<int> sewaIds = (sewaData as List)
+          .map((s) => s['id_sewa'] as int)
+          .toList();
+
+      // 3. Ambil invoice berdasarkan sewa milik admin ini
       final data = await client
           .from('invoice')
           .select('*, sewa(*, penyewa(*), kamar(*))')
+          .inFilter('id_sewa', sewaIds)
           .order('tanggal_dibuat', ascending: false);
 
       if (mounted) {

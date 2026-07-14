@@ -4,7 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../dashboard/dashboard_penghuni_screen.dart';
 import '../../../main.dart';
 
-const Color _kPrimary = Color(0xFF1A7C6A);
+const Color _kPrimary = Color(0xFF004D40);
 const Color _kBg = Color(0xFFF4F6F7);
 
 class ProfilPenghuniScreen extends StatefulWidget {

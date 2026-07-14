@@ -5,7 +5,7 @@ import '../tagihan/tagihan_screen.dart';
 import '../profil/profil_penghuni_screen.dart';
 
 // ── Warna tema KosKu ────────────────────────────────────────────────────────
-const Color _kPrimary = Color(0xFF1A7C6A);
+const Color _kPrimary = Color(0xFF004D40);
 const Color _kBg = Color(0xFFF4F6F7);
 const Color _kDanger = Color(0xFFFF3B30);
 const Color _kAmber = Color(0xFFF1B64C);
@@ -36,6 +36,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
   String _statusTagihan = 'BELUM';
   String _namaPemilik = '-';
   String _noPemilik = '';
+  String? _fotoPemilik;
   List<Map<String, dynamic>> _tagihan = [];
 
   @override
@@ -192,6 +193,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       String namaPemilik = '-';
       String namaKos = 'Kosku';
       String noPemilik = '';
+      String? fotoPemilik;
       if (idAdmin != null) {
         final admin = await supabase
             .from('profil_admin')
@@ -203,6 +205,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           namaPemilik = admin['nama_lengkap'] ?? '-';
           namaKos = admin['nama_kost'] ?? 'Kosku';
           noPemilik = admin['nomor_wa'] ?? '';
+          fotoPemilik = admin['foto_profil_url'];
         }
       }
 
@@ -282,7 +285,8 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _nominalTagihan = nominalTagihanActive;
           _statusTagihan = statusTagihanActive;
            _namaPemilik = namaPemilik;
-          _noPemilik = noPemilik.isNotEmpty ? noPemilik : "6281234567890";
+          _noPemilik = noPemilik;
+          _fotoPemilik = fotoPemilik;
           _tagihan = mappedTagihan;
           _isLoading = false;
         });
@@ -492,17 +496,6 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
                   Navigator.pushNamed(context, '/notifications');
                 },
                 icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white54, width: 1.5),
-                ),
-                child: const Icon(Icons.person, color: Colors.white, size: 24),
               ),
             ],
           ),
@@ -716,7 +709,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A7C6A), Color(0xFF2BAE8E)],
+          colors: [Color(0xFF004D40), Color(0xFF00796B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -726,7 +719,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
         children: [
           Row(
             children: [
-              // Avatar pemilik
+              // Avatar pemilik (foto jika ada, default icon)
               Container(
                 width: 52,
                 height: 52,
@@ -735,7 +728,18 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white54, width: 2),
                 ),
-                child: const Icon(Icons.person, color: Colors.white, size: 28),
+                child: ClipOval(
+                  child: (_fotoPemilik != null && _fotoPemilik!.isNotEmpty)
+                      ? Image.network(
+                          _fotoPemilik!,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.person, color: Colors.white, size: 28),
+                        )
+                      : const Icon(Icons.person, color: Colors.white, size: 28),
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -779,14 +783,32 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
                 elevation: 0,
               ),
               onPressed: () async {
+                if (_noPemilik.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nomor WhatsApp pemilik belum tersedia.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
                 final uri = Uri.parse('https://wa.me/$_noPemilik');
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Tidak dapat membuka WhatsApp.'),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  }
                 }
               },
               icon: const Icon(Icons.message_outlined, size: 18),
               label: const Text(
-                'Hubungi Pemilik',
+                'Hubungi via WhatsApp',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
             ),
@@ -1053,7 +1075,13 @@ class PenghuniBottomNav extends StatelessWidget {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => screen,
-        transitionDuration: Duration.zero,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 180),
       ),
     );
   }

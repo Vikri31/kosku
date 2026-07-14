@@ -56,13 +56,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Pendaftaran berhasil! Silakan periksa email Anda untuk verifikasi atau silakan masuk.'),
+            content: Text('Pendaftaran berhasil! Silakan masuk dengan akun Anda.'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 5),
+            duration: Duration(seconds: 3),
           ),
         );
-        // Navigasi kembali ke Login setelah sukses
-        Navigator.of(context).pop();
+        // Navigasi ke halaman login dan bersihkan seluruh stack
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
     } on AuthException catch (e) {
       if (mounted) {
