@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _emailController;
 
   bool _isLoading = false;
+  String? _fotoProfilUrl;
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -62,6 +65,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             if (data['nomor_wa'] != null) {
               _nomorWaController.text = data['nomor_wa'];
             }
+            if (data['foto_profil_url'] != null) {
+              _fotoProfilUrl = data['foto_profil_url'];
+            }
           });
         }
       }
@@ -72,6 +78,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (image == null) return;
+
+      if (mounted) setState(() => _isUploadingPhoto = true);
+
+      final bytes = await image.readAsBytes();
+      final String fileName = 'admin_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String storagePath = 'profil_admin/$fileName';
+
+      // Upload ke Supabase Storage (menggunakan bucket 'foto_kamar' yang sudah ada)
+      await Supabase.instance.client.storage
+          .from('foto_kamar')
+          .uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+
+      // Dapatkan public URL
+      final String publicUrl = Supabase.instance.client.storage
+          .from('foto_kamar')
+          .getPublicUrl(storagePath);
+
+      // Update ke tabel profil_admin
+      await Supabase.instance.client
+          .from('profil_admin')
+          .update({
+            'foto_profil_url': publicUrl,
+          })
+          .eq('id_admin', user.id);
+
+      if (mounted) {
+        setState(() {
+          _fotoProfilUrl = publicUrl;
+          _isUploadingPhoto = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto profil berhasil diperbarui!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal upload foto: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     }
   }
@@ -191,46 +265,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // --- AVATAR CHOOSE CONTAINER ---
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 54,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: const NetworkImage(avatarUrl),
-                      onBackgroundImageError: (exception, stackTrace) {
-                        // Fallback if load fails
-                      },
-                      child: const SizedBox.shrink(),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: primaryColor,
-                      shape: BoxShape.circle,
-                      border: Border.fromBorderSide(
-                        BorderSide(color: Colors.white, width: 2),
+              GestureDetector(
+                onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 54,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
+                            ? NetworkImage(_fotoProfilUrl!) as ImageProvider
+                            : const NetworkImage(avatarUrl),
+                        onBackgroundImageError: (exception, stackTrace) {
+                          // Fallback if load fails
+                        },
+                        child: _isUploadingPhoto
+                            ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                            : null,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 16,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.fromBorderSide(
+                          BorderSide(color: Colors.white, width: 2),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               Text(

@@ -38,6 +38,27 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
   String _noPemilik = '';
   String? _fotoPemilik;
   List<Map<String, dynamic>> _tagihan = [];
+  List<String> _fasilitasKamar = [];
+
+  IconData _getFacilityIcon(String name) {
+    switch (name) {
+      case 'Kasur':
+        return Icons.king_bed_outlined;
+      case 'AC':
+        return Icons.ac_unit_outlined;
+      case 'KM Dalam':
+        return Icons.bathtub_outlined;
+      case 'WiFi':
+      case 'Wifi':
+        return Icons.wifi_rounded;
+      case 'Meja Belajar':
+        return Icons.table_restaurant_outlined;
+      case 'Lemari':
+        return Icons.checkroom_outlined;
+      default:
+        return Icons.star_border;
+    }
+  }
 
   @override
   void initState() {
@@ -83,6 +104,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPemilik = '-';
           _noPemilik = '';
           _tagihan = [];
+          _fasilitasKamar = [];
           _isLoading = false;
         });
         return;
@@ -114,6 +136,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPemilik = '-';
           _noPemilik = '';
           _tagihan = [];
+          _fasilitasKamar = [];
           _isLoading = false;
         });
         return;
@@ -144,6 +167,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPemilik = '-';
           _noPemilik = '';
           _tagihan = [];
+          _fasilitasKamar = [];
           _isLoading = false;
         });
         return;
@@ -181,6 +205,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _namaPemilik = '-';
           _noPemilik = '';
           _tagihan = [];
+          _fasilitasKamar = [];
           _isLoading = false;
         });
         return;
@@ -188,6 +213,9 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
       final String nomorKamar = kamar['nomor_kamar'] ?? '-';
       final String? idAdmin = kamar['id_admin'];
+      final List<dynamic> fasilitasRaw = kamar['fasilitas'] ?? [];
+      final List<String> fasilitasKamar =
+          fasilitasRaw.map((e) => e.toString()).toList();
 
       // 5. Dapatkan data admin (pemilik kos) jika ada
       String namaPemilik = '-';
@@ -284,10 +312,11 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           _dekatJatuhTempo = dekatJatuhTempoActive;
           _nominalTagihan = nominalTagihanActive;
           _statusTagihan = statusTagihanActive;
-           _namaPemilik = namaPemilik;
+          _namaPemilik = namaPemilik;
           _noPemilik = noPemilik;
           _fotoPemilik = fotoPemilik;
           _tagihan = mappedTagihan;
+          _fasilitasKamar = fasilitasKamar;
           _isLoading = false;
         });
       }
@@ -547,15 +576,26 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           ),
           const SizedBox(height: 12),
           // Fasilitas chips
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: const [
-              _FasilitasChip(icon: Icons.ac_unit, label: 'AC'),
-              _FasilitasChip(icon: Icons.wifi, label: 'Wifi'),
-              _FasilitasChip(icon: Icons.bathroom_outlined, label: 'KM Dalam'),
-            ],
-          ),
+          if (_fasilitasKamar.isEmpty)
+            const Text(
+              'Tidak ada fasilitas khusus',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF6B7280),
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: _fasilitasKamar.map((name) {
+                return _FasilitasChip(
+                  icon: _getFacilityIcon(name),
+                  label: name,
+                );
+              }).toList(),
+            ),
           const SizedBox(height: 14),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
           const SizedBox(height: 12),

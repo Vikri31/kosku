@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'edit_profile_screen.dart';
 import '../../../main.dart';
 
@@ -68,27 +67,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) setState(() => _isUploadingPhoto = true);
 
-      final File file = File(image.path);
+      final bytes = await image.readAsBytes();
       final String fileName = 'admin_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final String storagePath = 'profil_admin/$fileName';
 
       // Upload ke Supabase Storage
       await Supabase.instance.client.storage
-          .from('foto-profil')
-          .upload(storagePath, file, fileOptions: const FileOptions(upsert: true));
+          .from('foto_kamar')
+          .uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
 
       // Dapatkan public URL
       final String publicUrl = Supabase.instance.client.storage
-          .from('foto-profil')
+          .from('foto_kamar')
           .getPublicUrl(storagePath);
 
       // Update ke tabel profil_admin
       await Supabase.instance.client
           .from('profil_admin')
-          .upsert({
-            'id_admin': user.id,
+          .update({
             'foto_profil_url': publicUrl,
-          });
+          })
+          .eq('id_admin', user.id);
 
       if (mounted) {
         setState(() {
