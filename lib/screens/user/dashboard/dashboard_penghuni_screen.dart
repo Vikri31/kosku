@@ -270,7 +270,11 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           final jtDate = DateTime.parse(jtRaw);
           jatuhTempoActive =
               "${jtDate.day} ${_getNamaBulan(jtDate.month)} ${jtDate.year}";
-          final diff = jtDate.difference(DateTime.now()).inDays;
+          
+          final today = DateTime.now();
+          final todayZero = DateTime(today.year, today.month, today.day);
+          final diff = jtDate.difference(todayZero).inDays;
+          
           sisaHariActive = "$diff Hari";
           if (diff <= 7 && diff >= 0) {
             dekatJatuhTempoActive = true;

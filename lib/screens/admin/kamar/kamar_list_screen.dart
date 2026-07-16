@@ -204,6 +204,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ChoiceChip(
+                    checkmarkColor: Colors.white,
                     label: Text(
                       filter,
                       style: TextStyle(

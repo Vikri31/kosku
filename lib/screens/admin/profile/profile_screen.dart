@@ -307,9 +307,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final adminName = _dbAdminName ?? user?.userMetadata?['nama_lengkap'] ?? 'Budi Santoso';
     final namaKos = _dbNamaKos ?? user?.userMetadata?['nama_kos'] ?? 'Kos Makmur Jaya';
 
-    // Fallback professional male avatar URL from Unsplash
-    const avatarUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150';
-
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -373,11 +370,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           backgroundColor: Colors.grey[200],
                           backgroundImage: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
                               ? NetworkImage(_fotoProfilUrl!) as ImageProvider
-                              : const NetworkImage(avatarUrl),
-                          onBackgroundImageError: (exception, stackTrace) {},
+                              : null,
+                          onBackgroundImageError: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
+                              ? (exception, stackTrace) {}
+                              : null,
                           child: _isUploadingPhoto
                               ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                              : null,
+                              : (_fotoProfilUrl == null || _fotoProfilUrl!.isEmpty)
+                                  ? Icon(Icons.person, size: 54, color: Colors.grey[400])
+                                  : null,
                         ),
                       ),
                       GestureDetector(

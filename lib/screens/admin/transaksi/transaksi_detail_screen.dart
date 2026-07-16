@@ -307,23 +307,25 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
               const Spacer(),
 
               // Generate Invoice Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _generateInvoice,
-                  icon: const Icon(Icons.receipt_long_outlined, size: 20),
-                  label: const Text('Generate Invoice'),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 2,
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              if (status.toUpperCase() != 'LUNAS') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _generateInvoice,
+                    icon: const Icon(Icons.receipt_long_outlined, size: 20),
+                    label: const Text('Generate Invoice'),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 2,
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
               // Delete button (Hapus)
               SizedBox(

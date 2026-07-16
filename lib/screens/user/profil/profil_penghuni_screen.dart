@@ -506,7 +506,7 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
             ),
             children: const [
               Text(
-                'Aplikasi pengelolaan kos kelompok mahasiswa Pemrograman Mobile.',
+                'KosKu adalah aplikasi pengelolaan kos yang memudahkan Anda sebagai penghuni untuk melihat informasi kamar, memantau tagihan bulanan, mengunggah bukti pembayaran, dan menerima notifikasi penting secara praktis.',
               ),
             ],
           );

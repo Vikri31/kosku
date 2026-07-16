@@ -99,11 +99,13 @@ class _FormPengeluaranScreenState extends State<FormPengeluaranScreen> {
       final finalNominal = int.parse(_nominalController.text.trim());
       final finalTanggal = _tanggalController.text.trim();
 
+      final user = Supabase.instance.client.auth.currentUser;
       await Supabase.instance.client.from('pengeluaran').insert({
         'kategori': finalKategori,
         'deskripsi': finalDeskripsi,
         'tanggal_keluar': finalTanggal,
         'nominal_keluar': finalNominal,
+        'id_admin': user?.id,
       });
 
       if (mounted) {

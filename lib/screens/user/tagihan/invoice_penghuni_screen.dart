@@ -228,27 +228,6 @@ class InvoicePenghuniScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Center(
-                  child: TextButton.icon(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(
-                      foregroundColor: _primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                    ),
-                    icon: const Icon(Icons.download_outlined, size: 17),
-                    label: const Text(
-                      'Simpan ke Galeri',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Center(
                   child: TextButton(
                     onPressed: () => Navigator.of(context).maybePop(),
                     style: TextButton.styleFrom(

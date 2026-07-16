@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../services/notification_service.dart';
 
 /// Screen for entering room code to request access/join a room.
 class InputKodeScreen extends StatefulWidget {
@@ -183,6 +184,35 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
       'status_request': 'Menunggu Konfirmasi',
       'tanggal_pengajuan': DateTime.now().toIso8601String(),
     });
+
+    // Send notification to owner (admin)
+    try {
+      final detail = await supabase
+          .from('detail_penyewa')
+          .select('nama_lengkap')
+          .eq('id_user', userId)
+          .maybeSingle();
+      final tenantName = detail?['nama_lengkap'] ?? 'Calon Penyewa';
+
+      final kamarData = await supabase
+          .from('kamar')
+          .select('id_admin, nomor_kamar')
+          .eq('id_kamar', idKamar)
+          .maybeSingle();
+      final String? idAdmin = kamarData?['id_admin'];
+      final String roomNo = kamarData?['nomor_kamar'] ?? '-';
+
+      if (idAdmin != null) {
+        await NotificationService.sendNotification(
+          idUser: idAdmin,
+          judul: 'Pengajuan Bergabung Baru 🚪',
+          pesan: '$tenantName mengajukan permintaan bergabung ke Kamar $roomNo.',
+          kategori: 'permintaan_bergabung',
+        );
+      }
+    } catch (e) {
+      debugPrint('Gagal mengirim notifikasi bergabung: $e');
+    }
   }
 
   // --- Show Confirmation Dialog for Changing Rooms ---

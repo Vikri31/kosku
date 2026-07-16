@@ -102,47 +102,77 @@ class _BukuKasScreenState extends State<BukuKasScreen> {
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: Supabase.instance.client
-            .from('pemasukan')
-            .stream(primaryKey: ['id_pemasukan']),
-        builder: (context, pemasukanSnapshot) {
+            .from('kamar')
+            .stream(primaryKey: ['id_kamar'])
+            .eq('id_admin', Supabase.instance.client.auth.currentUser?.id ?? ''),
+        builder: (context, kamarSnapshot) {
           return StreamBuilder<List<Map<String, dynamic>>>(
-            stream: Supabase.instance.client
-                .from('pengeluaran')
-                .stream(primaryKey: ['id_pengeluaran']),
-            builder: (context, pengeluaranSnapshot) {
-              if (pemasukanSnapshot.connectionState == ConnectionState.waiting ||
-                  pengeluaranSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: primaryColor),
-                );
-              }
+            stream: Supabase.instance.client.from('sewa').stream(primaryKey: ['id_sewa']),
+            builder: (context, sewaSnapshot) {
+              return StreamBuilder<List<Map<String, dynamic>>>(
+                stream: Supabase.instance.client.from('invoice').stream(primaryKey: ['id_invoice']),
+                builder: (context, invoiceSnapshot) {
+                  return StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: Supabase.instance.client.from('pemasukan').stream(primaryKey: ['id_pemasukan']),
+                    builder: (context, pemasukanSnapshot) {
+                      return StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: Supabase.instance.client
+                            .from('pengeluaran')
+                            .stream(primaryKey: ['id_pengeluaran'])
+                            .eq('id_admin', Supabase.instance.client.auth.currentUser?.id ?? ''),
+                        builder: (context, pengeluaranSnapshot) {
+                          if (kamarSnapshot.connectionState == ConnectionState.waiting ||
+                              sewaSnapshot.connectionState == ConnectionState.waiting ||
+                              invoiceSnapshot.connectionState == ConnectionState.waiting ||
+                              pemasukanSnapshot.connectionState == ConnectionState.waiting ||
+                              pengeluaranSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(color: primaryColor),
+                            );
+                          }
 
-              // Kalkulasi Pemasukan
-              int totalPemasukan = 0;
-              if (pemasukanSnapshot.hasData) {
-                for (final row in pemasukanSnapshot.data!) {
-                  totalPemasukan += (row['nominal_masuk'] as num?)?.toInt() ?? 0;
-                }
-              }
+                          // 1. Get room IDs owned by admin
+                          final adminRooms = kamarSnapshot.data ?? [];
+                          final adminRoomIds = adminRooms.map((r) => r['id_kamar'] as int).toSet();
 
-              // Kalkulasi Pengeluaran
-              int totalPengeluaran = 0;
-              final rawPengeluaran = pengeluaranSnapshot.data ?? [];
-              for (final row in rawPengeluaran) {
-                totalPengeluaran += (row['nominal_keluar'] as num?)?.toInt() ?? 0;
-              }
+                          // 2. Get sewa IDs for admin's rooms
+                          final allSewas = sewaSnapshot.data ?? [];
+                          final adminSewas = allSewas.where((s) => adminRoomIds.contains(s['id_kamar'] as int)).toList();
+                          final adminSewaIds = adminSewas.map((s) => s['id_sewa'] as int).toSet();
 
-              // Kalkulasi Saldo Bersih
-              final saldoBersih = totalPemasukan - totalPengeluaran;
+                          // 3. Get invoices for admin's sewas
+                          final allInvoices = invoiceSnapshot.data ?? [];
+                          final adminInvoices = allInvoices.where((i) => adminSewaIds.contains(i['id_sewa'] as int)).toList();
+                          final adminInvoiceIds = adminInvoices.map((i) => i['id_invoice'] as int).toSet();
 
-              // Sorting data pengeluaran berdasarkan tanggal_keluar terbaru secara kronologis
-              final listPengeluaran = List<Map<String, dynamic>>.from(rawPengeluaran);
-              listPengeluaran.sort((a, b) {
-                final dateA = DateTime.tryParse(a['tanggal_keluar'] ?? '') ?? DateTime(0);
-                final dateB = DateTime.tryParse(b['tanggal_keluar'] ?? '') ?? DateTime(0);
-                // Urutkan menurun (tanggal terbaru di atas)
-                return dateB.compareTo(dateA);
-              });
+                          // 4. Get pemasukan for admin's invoices
+                          final allPemasukan = pemasukanSnapshot.data ?? [];
+                          final adminPemasukans = allPemasukan.where((p) => adminInvoiceIds.contains(p['id_invoice'] as int)).toList();
+
+                          // Kalkulasi Pemasukan
+                          int totalPemasukan = 0;
+                          for (final row in adminPemasukans) {
+                            totalPemasukan += (row['nominal_masuk'] as num?)?.toInt() ?? 0;
+                          }
+
+                          // Kalkulasi Pengeluaran
+                          int totalPengeluaran = 0;
+                          final rawPengeluaran = pengeluaranSnapshot.data ?? [];
+                          for (final row in rawPengeluaran) {
+                            totalPengeluaran += (row['nominal_keluar'] as num?)?.toInt() ?? 0;
+                          }
+
+                          // Kalkulasi Saldo Bersih
+                          final saldoBersih = totalPemasukan - totalPengeluaran;
+
+                          // Sorting data pengeluaran berdasarkan tanggal_keluar terbaru secara kronologis
+                          final listPengeluaran = List<Map<String, dynamic>>.from(rawPengeluaran);
+                          listPengeluaran.sort((a, b) {
+                            final dateA = DateTime.tryParse(a['tanggal_keluar'] ?? '') ?? DateTime(0);
+                            final dateB = DateTime.tryParse(b['tanggal_keluar'] ?? '') ?? DateTime(0);
+                            // Urutkan menurun (tanggal terbaru di atas)
+                            return dateB.compareTo(dateA);
+                          });
 
               return Column(
                 children: [
@@ -453,11 +483,17 @@ class _BukuKasScreenState extends State<BukuKasScreen> {
                     ),
                   ),
                 ],
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(

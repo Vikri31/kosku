@@ -34,7 +34,8 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
   String _formatDateTime(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return '-';
     try {
-      final date = DateTime.parse(dateStr).toLocal();
+      final dateUtc = DateTime.parse(dateStr);
+      final date = dateUtc.toLocal();
       final months = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -44,6 +45,12 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       ];
       final dayName = days[date.weekday - 1];
       final monthName = months[date.month - 1];
+      
+      // Jika data tanggal tidak memiliki komponen waktu (jam, menit, detik = 0 dalam UTC), cukup tampilkan tanggal saja
+      if (dateUtc.hour == 0 && dateUtc.minute == 0 && dateUtc.second == 0) {
+        return '$dayName, ${date.day} $monthName ${date.year}';
+      }
+      
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
       return '$dayName, ${date.day} $monthName ${date.year} pukul $hour:$minute';

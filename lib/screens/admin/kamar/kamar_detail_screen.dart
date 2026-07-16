@@ -33,6 +33,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
   Map<String, dynamic>? _kamarData;
   Map<String, dynamic>? _sewaData;
   Map<String, dynamic>? _penyewaData;
+  Map<String, dynamic>? _detailPenyewaData;
   List<Map<String, dynamic>> _historiPembayaran = [];
   bool _isLoading = true;
   int _currentImageIndex = 0;
@@ -140,6 +141,17 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
             .maybeSingle();
         _penyewaData = penyewa;
 
+        if (penyewa != null && penyewa['nik'] != null) {
+          final detail = await client
+              .from('detail_penyewa')
+              .select()
+              .eq('nik', penyewa['nik'])
+              .maybeSingle();
+          _detailPenyewaData = detail;
+        } else {
+          _detailPenyewaData = null;
+        }
+
         // Load histori pembayaran (invoices for this sewa)
         final invoices = await client
             .from('invoice')
@@ -150,6 +162,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
         _historiPembayaran = List<Map<String, dynamic>>.from(invoices);
       } else {
         _penyewaData = null;
+        _detailPenyewaData = null;
         _historiPembayaran = [];
       }
     } catch (e) {
@@ -1276,14 +1289,21 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: const Color(0xFFE0F2F1),
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: primaryColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
+                    backgroundImage: (_detailPenyewaData?['foto_profil_url'] != null &&
+                            _detailPenyewaData!['foto_profil_url'].toString().isNotEmpty)
+                        ? NetworkImage(_detailPenyewaData!['foto_profil_url'])
+                        : null,
+                    child: (_detailPenyewaData?['foto_profil_url'] == null ||
+                            _detailPenyewaData!['foto_profil_url'].toString().isEmpty)
+                        ? Text(
+                            initial,
+                            style: const TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 14),
                   Expanded(

@@ -235,9 +235,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     const primaryColor = Color(0xFF004D40);
     const backgroundColor = Color(0xFFF5F7F8);
 
-    // Fallback professional smiling man avatar matching 2_Edit Profil.png
-    const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150';
-
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -286,13 +283,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         backgroundColor: Colors.grey[200],
                         backgroundImage: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
                             ? NetworkImage(_fotoProfilUrl!) as ImageProvider
-                            : const NetworkImage(avatarUrl),
-                        onBackgroundImageError: (exception, stackTrace) {
-                          // Fallback if load fails
-                        },
+                            : null,
+                        onBackgroundImageError: (_fotoProfilUrl != null && _fotoProfilUrl!.isNotEmpty)
+                            ? (exception, stackTrace) {
+                                // Fallback if load fails
+                              }
+                            : null,
                         child: _isUploadingPhoto
                             ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                            : null,
+                            : (_fotoProfilUrl == null || _fotoProfilUrl!.isEmpty)
+                                ? Icon(Icons.person, size: 54, color: Colors.grey[400])
+                                : null,
                       ),
                     ),
                     Container(
