@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/notification_service.dart';
 import 'pilih_role_screen.dart';
 import '../admin/dashboard/dashboard_screen.dart';
 import '../user/dashboard/dashboard_penghuni_screen.dart';
@@ -47,6 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Gagal memuat profil pengguna.');
       }
 
+      // Simpan FCM Token perangkat ke Supabase setelah login sukses
+      try {
+        await NotificationService.saveDeviceToken();
+      } catch (fcmError) {
+        debugPrint('Gagal menyimpan device token: $fcmError');
+      }
+
       // Query database table for role
       String? role;
       try {
@@ -77,6 +85,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         if (role == 'admin' || role == 'pemilik') {
+          // Pastikan profil_admin ada di database
+          try {
+            final existingProfile = await client
+                .from('profil_admin')
+                .select('id_admin')
+                .eq('id_admin', user.id)
+                .maybeSingle();
+
+            if (existingProfile == null) {
+              final metadata = user.userMetadata ?? {};
+              await client.from('profil_admin').insert({
+                'id_admin': user.id,
+                'nama_lengkap': metadata['nama_lengkap'] ?? 'Admin Baru',
+                'nama_kost': metadata['nama_kos'] ?? 'Kos Baru',
+              });
+            }
+          } catch (dbError) {
+            debugPrint('Error ensuring admin profile exists on login: $dbError');
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Login berhasil!'),

@@ -100,12 +100,36 @@ class _FormPengeluaranScreenState extends State<FormPengeluaranScreen> {
       final finalTanggal = _tanggalController.text.trim();
 
       final user = Supabase.instance.client.auth.currentUser;
+      final userId = user?.id;
+
+      if (userId != null) {
+        // Pastikan profil_admin sudah ada agar foreign key terpenuhi
+        final existingProfile = await Supabase.instance.client
+            .from('profil_admin')
+            .select('id_admin')
+            .eq('id_admin', userId)
+            .maybeSingle();
+
+        if (existingProfile == null) {
+          final namaDefault =
+              user?.userMetadata?['nama_lengkap'] ??
+              user?.email?.split('@').first ??
+              'Admin';
+          final kosDefault = user?.userMetadata?['nama_kos'] ?? 'Kos Saya';
+          await Supabase.instance.client.from('profil_admin').insert({
+            'id_admin': userId,
+            'nama_lengkap': namaDefault,
+            'nama_kost': kosDefault,
+          });
+        }
+      }
+
       await Supabase.instance.client.from('pengeluaran').insert({
         'kategori': finalKategori,
         'deskripsi': finalDeskripsi,
         'tanggal_keluar': finalTanggal,
         'nominal_keluar': finalNominal,
-        'id_admin': user?.id,
+        'id_admin': userId,
       });
 
       if (mounted) {

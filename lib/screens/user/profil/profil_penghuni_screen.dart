@@ -15,49 +15,88 @@ class ProfilPenghuniScreen extends StatefulWidget {
 }
 
 class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
+  // ── Static Cache Data (Persist between route replacements) ────────────────
+  static String? _cachedNamaPenghuni;
+  static String? _cachedNamaKos;
+  static String? _cachedNomorKamar;
+  static String? _cachedStatusTagihan;
+  static bool? _cachedStatusLunas;
+  static String? _cachedAvatarUrl;
+  static bool? _cachedIsDataLengkap;
+  static int? _cachedIdSewa;
+  static int? _cachedIdKamar;
+  static bool _hasLoadedOnce = false;
+
   // ── State Data ──────────────────────────────────────────────────────────
-  String _namaPenghuni = '-';
-  String _namaKos = 'Belum terikat kos';
-  String _nomorKamar = '-';
-  String _statusTagihan = '-';
-  bool _statusLunas = true;
+  late String _namaPenghuni;
+  late String _namaKos;
+  late String _nomorKamar;
+  late String _statusTagihan;
+  late bool _statusLunas;
   String? _avatarUrl;
-  bool _isDataLengkap = false;
+  late bool _isDataLengkap;
   int? _idSewa;
   int? _idKamar;
+  late bool _isLoading;
 
   static const String _appVersion = '1.0.0 (Stable)';
 
   @override
   void initState() {
     super.initState();
+    
+    // Load from static cache if available, otherwise use initial defaults
+    _namaPenghuni = _cachedNamaPenghuni ?? '-';
+    _namaKos = _cachedNamaKos ?? 'Memuat...';
+    _nomorKamar = _cachedNomorKamar ?? 'Memuat...';
+    _statusTagihan = _cachedStatusTagihan ?? 'Memuat...';
+    _statusLunas = _cachedStatusLunas ?? true;
+    _avatarUrl = _cachedAvatarUrl;
+    _isDataLengkap = _cachedIsDataLengkap ?? false;
+    _idSewa = _cachedIdSewa;
+    _idKamar = _cachedIdKamar;
+    _isLoading = !_hasLoadedOnce;
+
+    // Fallback sync load from Auth metadata if cache is empty
+    if (_cachedNamaPenghuni == null) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        _namaPenghuni = user.userMetadata?['nama_lengkap'] ??
+            user.email?.split('@').first ??
+            '-';
+        _isDataLengkap = user.userMetadata?['data_lengkap'] == true;
+      }
+    }
     _loadProfileData();
   }
 
   // ── Fetch Profile Data from Supabase ──────────────────────────────────────
   Future<void> _loadProfileData() async {
     if (!mounted) return;
+    if (!_hasLoadedOnce) {
+      setState(() {
+        _isLoading = true;
+        _namaKos = 'Memuat...';
+        _nomorKamar = 'Memuat...';
+        _statusTagihan = 'Memuat...';
+      });
+    }
 
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
 
       if (user != null) {
-        // Reset defaults first
-        _namaPenghuni =
-            user.userMetadata?['nama_lengkap'] ??
-            user.email?.split('@').first ??
-            '-';
-        _namaKos = 'Belum terikat kos';
-        _nomorKamar = '-';
-        _statusTagihan = '-';
-        _statusLunas = true;
-        _isDataLengkap = false;
-        _idSewa = null;
-        _idKamar = null;
-
-        if (user.userMetadata != null) {
-          _isDataLengkap = user.userMetadata!['data_lengkap'] == true;
+        // Reset defaults (only if we don't have cache)
+        if (!_hasLoadedOnce) {
+          _namaPenghuni =
+              user.userMetadata?['nama_lengkap'] ??
+              user.email?.split('@').first ??
+              '-';
+          _isDataLengkap = user.userMetadata?['data_lengkap'] == true;
+          _idSewa = null;
+          _idKamar = null;
+          _avatarUrl = null;
         }
 
         // 2. Fetch from detail_penyewa table
@@ -113,8 +152,15 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                         .maybeSingle();
                     if (admin != null) {
                       _namaKos = admin['nama_kost'] ?? 'Kosku';
+                    } else {
+                      _namaKos = 'Kosku';
                     }
+                  } else {
+                    _namaKos = 'Kosku';
                   }
+                } else {
+                  _namaKos = 'Belum terikat kos';
+                  _nomorKamar = '-';
                 }
 
                 // Check invoice status
@@ -138,16 +184,50 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                   _statusLunas = true;
                   _statusTagihan = 'Tidak Ada Tagihan';
                 }
+              } else {
+                _namaKos = 'Belum terikat kos';
+                _nomorKamar = '-';
+                _statusTagihan = '-';
+                _statusLunas = true;
               }
+            } else {
+              _namaKos = 'Belum terikat kos';
+              _nomorKamar = '-';
+              _statusTagihan = '-';
+              _statusLunas = true;
             }
+          } else {
+            _namaKos = 'Belum terikat kos';
+            _nomorKamar = '-';
+            _statusTagihan = '-';
+            _statusLunas = true;
           }
+        } else {
+          _namaKos = 'Belum terikat kos';
+          _nomorKamar = '-';
+          _statusTagihan = '-';
+          _statusLunas = true;
         }
+
+        // Save to static cache
+        _cachedNamaPenghuni = _namaPenghuni;
+        _cachedNamaKos = _namaKos;
+        _cachedNomorKamar = _nomorKamar;
+        _cachedStatusTagihan = _statusTagihan;
+        _cachedStatusLunas = _statusLunas;
+        _cachedAvatarUrl = _avatarUrl;
+        _cachedIsDataLengkap = _isDataLengkap;
+        _cachedIdSewa = _idSewa;
+        _cachedIdKamar = _idKamar;
+        _hasLoadedOnce = true;
       }
     } catch (e) {
       debugPrint('Error loading profile data: $e');
     } finally {
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -253,21 +333,32 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
                   ),
                 ),
                 child: ClipOval(
-                  child: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                      ? Image.network(
-                          _avatarUrl!,
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              size: 50,
+                  child: _isLoading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
                               color: _kPrimary,
-                            );
-                          },
+                            ),
+                          ),
                         )
-                      : const Icon(Icons.person, size: 50, color: _kPrimary),
+                      : (_avatarUrl != null && _avatarUrl!.isNotEmpty
+                          ? Image.network(
+                              _avatarUrl!,
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: _kPrimary,
+                                );
+                              },
+                            )
+                          : const Icon(Icons.person, size: 50, color: _kPrimary)),
                 ),
               ),
               Positioned(
@@ -533,10 +624,10 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
 
           try {
             await flutterLocalNotificationsPlugin.show(
-              999,
-              'Uji Coba Notifikasi KosKu 🔊',
-              'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
-              platformChannelSpecifics,
+              id: 999,
+              title: 'Uji Coba Notifikasi KosKu 🔊',
+              body: 'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
+              notificationDetails: platformChannelSpecifics,
             );
           } catch (e) {
             debugPrint('Gagal memicu test notifikasi: $e');

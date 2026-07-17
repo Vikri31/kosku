@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/notification_service.dart';
 
 class KonfirmasiPenghuniScreen extends StatefulWidget {
   final int idRequest;
@@ -242,6 +243,19 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           .update({'status_request': 'Disetujui'})
           .eq('id_request', widget.idRequest);
 
+      // 6. Send notification to tenant
+      try {
+        final roomNo = _kamarData?['nomor_kamar'] ?? '-';
+        await NotificationService.sendNotification(
+          idUser: idUser,
+          judul: 'Pengajuan Bergabung Disetujui! 🎉',
+          pesan: 'Selamat! Pengajuan Anda ke Kamar $roomNo telah disetujui.',
+          kategori: 'penyewa',
+        );
+      } catch (e) {
+        debugPrint('Gagal mengirim notifikasi persetujuan: $e');
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -279,6 +293,22 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           .from('request_join')
           .update({'status_request': 'Ditolak'})
           .eq('id_request', widget.idRequest);
+
+      // Send notification to tenant
+      try {
+        final idUser = _requestData?['id_user'];
+        final roomNo = _kamarData?['nomor_kamar'] ?? '-';
+        if (idUser != null) {
+          await NotificationService.sendNotification(
+            idUser: idUser,
+            judul: 'Pengajuan Bergabung Ditolak ❌',
+            pesan: 'Maaf, pengajuan Anda ke Kamar $roomNo telah ditolak.',
+            kategori: 'penyewa',
+          );
+        }
+      } catch (e) {
+        debugPrint('Gagal mengirim notifikasi penolakan: $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

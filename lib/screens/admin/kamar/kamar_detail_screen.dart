@@ -503,9 +503,7 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryColor))
-          : CustomScrollView(
+      body: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
                 // --- SLIVER APP BAR WITH IMAGE ---
@@ -526,22 +524,15 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                       fit: StackFit.expand,
                       children: [
                         ((_kamarData?['foto_kamar'] as List?)?.isEmpty ?? true)
-                            ? Image.network(
-                                isTerisi
-                                    ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600'
-                                    : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                      color: primaryColor.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      child: const Icon(
-                                        Icons.bed_outlined,
-                                        size: 60,
-                                        color: Colors.white54,
-                                      ),
-                                    ),
+                            ? Container(
+                                color: primaryColor.withValues(
+                                  alpha: 0.3,
+                                ),
+                                child: const Icon(
+                                  Icons.bed_outlined,
+                                  size: 60,
+                                  color: Colors.white54,
+                                ),
                               )
                             : PageView.builder(
                                 controller: _pageController,
@@ -762,6 +753,28 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                         // --- FASILITAS CHIPS ---
                         Builder(
                           builder: (context) {
+                            if (_isLoading) {
+                              return const SizedBox(
+                                height: 24,
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Memuat fasilitas...',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
                             final List<dynamic> fasilitas =
                                 _kamarData?['fasilitas'] as List<dynamic>? ??
                                 [];
@@ -824,25 +837,27 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
                           label: 'Edit Properti Kamar',
                           icon: Icons.edit_outlined,
                           color: Colors.transparent,
-                          textColor: primaryColor,
-                          borderColor: primaryColor,
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    KamarFormScreen(roomData: _kamarData),
-                              ),
-                            );
-                            _loadData();
-                          },
+                          textColor: _isLoading ? Colors.grey : primaryColor,
+                          borderColor: _isLoading ? Colors.grey : primaryColor,
+                          onPressed: _isLoading
+                              ? () {}
+                              : () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          KamarFormScreen(roomData: _kamarData),
+                                    ),
+                                  );
+                                  _loadData();
+                                },
                         ),
                         const SizedBox(height: 12),
                         _buildActionButton(
                           label: 'Hapus Kamar',
                           icon: Icons.delete_outline,
-                          color: const Color(0xFFC62828),
-                          onPressed: _hapusKamar,
+                          color: _isLoading ? Colors.grey : const Color(0xFFC62828),
+                          onPressed: _isLoading ? () {} : _hapusKamar,
                         ),
                         const SizedBox(height: 32),
                       ],
@@ -867,6 +882,14 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
   // ==================== KAMAR KOSONG UI LAYOUT ====================
   Widget _buildKamarKosongSection() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
+      );
+    }
     final tokenKamar = _kamarData?['kode_kamar'] ?? '-';
 
     return Column(
@@ -1006,12 +1029,24 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
         const SizedBox(height: 24),
 
         // 2. Realtime Stream Card Notifikasi Calon Penghuni
-        StreamBuilder<List<Map<String, dynamic>>>(
-          stream: Supabase.instance.client
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: Supabase.instance.client
               .from('request_join')
-              .stream(primaryKey: ['id_request'])
+              .select()
               .eq('id_kamar', widget.idKamar),
           builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(color: primaryColor),
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              debugPrint('Error loading request_join: ${snapshot.error}');
+              return const SizedBox.shrink();
+            }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -1245,6 +1280,14 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
   // ==================== KAMAR TERISI UI LAYOUT ====================
   Widget _buildKamarTerisiSection() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
+      );
+    }
     final nama = _penyewaData?['nama_lengkap'] ?? '-';
     final wa = _penyewaData?['nomor_whatsapp'] ?? '-';
     final nik = _penyewaData?['nik'] ?? '-';
@@ -1490,12 +1533,24 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
         // 4. Seksi "Bukti Pembayaran Masuk" (Realtime Validation Card)
         if (_sewaData != null)
-          StreamBuilder<List<Map<String, dynamic>>>(
-            stream: Supabase.instance.client
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: Supabase.instance.client
                 .from('invoice')
-                .stream(primaryKey: ['id_invoice'])
+                .select()
                 .eq('id_sewa', _sewaData!['id_sewa']),
             builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(color: primaryColor),
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                debugPrint('Error loading invoices: ${snapshot.error}');
+                return const SizedBox.shrink();
+              }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return const SizedBox.shrink();
               }

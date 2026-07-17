@@ -1,8 +1,57 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class NotificationService {
   static final _client = Supabase.instance.client;
+
+  /// Menyimpan token FCM perangkat ke database Supabase
+  static Future<void> saveDeviceToken() async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('saveDeviceToken: User tidak login, membatalkan penyimpanan token.');
+      return;
+    }
+
+    try {
+      // Request izin notifikasi dari user (wajib untuk Android 13+ & iOS)
+      NotificationSettings settings = await FirebaseMessaging.instance.requestPermission();
+      
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // Dapatkan FCM Token dari perangkat
+        String? token = await FirebaseMessaging.instance.getToken();
+        
+        if (token != null) {
+          // Deteksi tipe perangkat/platform secara dinamis
+          String deviceType = 'android';
+          if (defaultTargetPlatform == TargetPlatform.iOS) {
+            deviceType = 'ios';
+          } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+            deviceType = 'macos';
+          } else if (kIsWeb) {
+            deviceType = 'web';
+          } else if (defaultTargetPlatform == TargetPlatform.windows) {
+            deviceType = 'windows';
+          }
+
+          // Simpan atau update token di tabel 'user_tokens'
+          await _client.from('user_tokens').upsert({
+            'id_user': currentUser.id,
+            'fcm_token': token,
+            'device_type': deviceType,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+          debugPrint('FCM Token berhasil disimpan ke Supabase: $token');
+        } else {
+          debugPrint('FCM Token bernilai null.');
+        }
+      } else {
+        debugPrint('Izin notifikasi ditolak oleh user.');
+      }
+    } catch (e) {
+      debugPrint('Error saving FCM device token: $e');
+    }
+  }
 
   /// Mengirimkan notifikasi baru ke database Supabase
   static Future<void> sendNotification({

@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final namaKost = _namaKostController.text.trim();
 
       // Pendaftaran user ke Supabase Auth beserta user_metadata
-      await Supabase.instance.client.auth.signUp(
+      final response = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
         data: {
@@ -52,6 +52,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'nama_kos': namaKost,
         },
       );
+
+      final user = response.user;
+      if (user != null) {
+        try {
+          await Supabase.instance.client.from('profil_admin').insert({
+            'id_admin': user.id,
+            'nama_lengkap': namaLengkap,
+            'nama_kost': namaKost,
+          });
+        } catch (dbError) {
+          debugPrint('Gagal menyimpan profil_admin saat registrasi: $dbError');
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

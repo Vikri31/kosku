@@ -136,10 +136,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await flutterLocalNotificationsPlugin.show(
-        999, // unique test id
-        'Uji Coba Notifikasi KosKu 🔊',
-        'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
-        platformChannelSpecifics,
+        id: 999,
+        title: 'Uji Coba Notifikasi KosKu 🔊',
+        body: 'Notifikasi sistem berhasil dikirim dengan suara dan getaran!',
+        notificationDetails: platformChannelSpecifics,
       );
     } catch (e) {
       debugPrint('Gagal memicu test notifikasi: $e');

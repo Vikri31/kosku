@@ -304,7 +304,6 @@ class _KamarListScreenState extends State<KamarListScreen> {
                     final nomorKamar = room['nomor_kamar'] as String;
                     final harga = room['harga_sewa_dasar'] as num;
                     final status = room['status_kamar'] as String;
-                    final isTerisi = status == 'Terisi';
 
                     return GestureDetector(
                       onTap: () {
@@ -338,25 +337,32 @@ class _KamarListScreenState extends State<KamarListScreen> {
                                     topLeft: Radius.circular(16),
                                     topRight: Radius.circular(16),
                                   ),
-                                  child: Image.network(
-                                    ((room['foto_kamar'] as List?)?.isNotEmpty ?? false)
-                                        ? (room['foto_kamar'] as List).first as String
-                                        : (isTerisi
-                                            ? 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400'
-                                            : 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400'),
-                                    height: 110,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      height: 110,
-                                      color: Colors.grey[200],
-                                      child: Icon(
-                                        Icons.bed_outlined,
-                                        size: 40,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                  ),
+                                  child: ((room['foto_kamar'] as List?)?.isNotEmpty ?? false)
+                                      ? Image.network(
+                                          (room['foto_kamar'] as List).first as String,
+                                          height: 110,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            height: 110,
+                                            color: Colors.grey[200],
+                                            child: Icon(
+                                              Icons.bed_outlined,
+                                              size: 40,
+                                              color: Colors.grey[400],
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          height: 110,
+                                          width: double.infinity,
+                                          color: Colors.grey[200],
+                                          child: Icon(
+                                            Icons.bed_outlined,
+                                            size: 40,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ),
                                 ),
                                 Positioned(
                                   top: 8,

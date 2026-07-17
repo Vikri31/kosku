@@ -428,12 +428,16 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: client
+                    FutureBuilder<List<Map<String, dynamic>>>(
+                      future: client
                           .from('request_join')
-                          .stream(primaryKey: ['id_request'])
+                          .select()
                           .eq('id_kamar', widget.idKamar),
                       builder: (context, requestSnapshot) {
+                        if (requestSnapshot.hasError) {
+                          debugPrint('Error loading request_join: ${requestSnapshot.error}');
+                          return const SizedBox.shrink();
+                        }
                         if (requestSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Padding(

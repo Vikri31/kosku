@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
+import 'services/notification_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/pilih_role_screen.dart';
@@ -17,20 +22,41 @@ import 'screens/notification/notification_list_screen.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
+/// Handler untuk menerima notifikasi FCM saat aplikasi di-background atau mati total.
+/// WAJIB berupa top-level function (bukan method dalam class).
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint('Background FCM message received: ${message.messageId}');
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/launcher_icon');
-
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-
   try {
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Daftarkan background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
-    debugPrint('Gagal inisialisasi local notification: $e');
+    debugPrint('Gagal inisialisasi Firebase: $e');
+  }
+
+  if (!kIsWeb) {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    try {
+      await flutterLocalNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
+    } catch (e) {
+      debugPrint('Gagal inisialisasi local notification: $e');
+    }
   }
 
   try {
@@ -106,6 +132,8 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   Session? _currentSession;
+  String? _currentUserId;
+  String? _listenedUserId;
   bool _isLoading = true;
   Future<String?>? _roleFuture;
   StreamSubscription<AuthState>? _authSubscription;
@@ -122,23 +150,26 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _requestNotificationPermission() {
+    if (kIsWeb) return;
     flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
   }
 
   void _showSystemNotification(String title, String body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'kosku_notifikasi_channel', // id
-      'Notifikasi KosKu', // name
-      channelDescription: 'Channel untuk notifikasi real-time aplikasi KosKu',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-    );
+          'kosku_notifikasi_channel', // id
+          'Notifikasi KosKu', // name
+          channelDescription:
+              'Channel untuk notifikasi real-time aplikasi KosKu',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        );
 
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
@@ -146,10 +177,10 @@ class _AuthGateState extends State<AuthGate> {
 
     try {
       await flutterLocalNotificationsPlugin.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000), // unique id
-        title,
-        body,
-        platformChannelSpecifics,
+        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title: title,
+        body: body,
+        notificationDetails: platformChannelSpecifics,
       );
     } catch (e) {
       debugPrint('Gagal memicu notifikasi sistem: $e');
@@ -157,6 +188,8 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _setupNotificationRealtimeListener(String userId) {
+    if (_listenedUserId == userId && _notificationSubscription != null) return;
+    _listenedUserId = userId;
     _notificationSubscription?.cancel();
     _notificationSubscription = Supabase.instance.client
         .from('notifikasi')
@@ -172,12 +205,18 @@ class _AuthGateState extends State<AuthGate> {
               final createdAt = DateTime.tryParse(createdAtStr);
               if (createdAt != null) {
                 // Membandingkan dengan konversi UTC agar terhindar dari perbedaan zona waktu lokal device (WIB/WITA/WIT)
-                final diffInSeconds = DateTime.now().toUtc().difference(createdAt.toUtc()).inSeconds.abs();
+                final diffInSeconds = DateTime.now()
+                    .toUtc()
+                    .difference(createdAt.toUtc())
+                    .inSeconds
+                    .abs();
                 if (diffInSeconds < 15) {
                   // Tampilkan snackbar in-app sebagai popup notifikasi
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      backgroundColor: const Color(0xFF004D40), // Teal warna tema KosKu
+                      backgroundColor: const Color(
+                        0xFF004D40,
+                      ), // Teal warna tema KosKu
                       duration: const Duration(seconds: 4),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -185,7 +224,10 @@ class _AuthGateState extends State<AuthGate> {
                       ),
                       content: Row(
                         children: [
-                          const Icon(Icons.notifications_active, color: Color(0xFFFFA834)),
+                          const Icon(
+                            Icons.notifications_active,
+                            color: Color(0xFFFFA834),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -194,12 +236,19 @@ class _AuthGateState extends State<AuthGate> {
                               children: [
                                 Text(
                                   latestNotif['judul'] ?? 'Notifikasi Baru',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   latestNotif['pesan'] ?? '',
-                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                  ),
                                 ),
                               ],
                             ),
@@ -217,10 +266,12 @@ class _AuthGateState extends State<AuthGate> {
                   );
 
                   // Tampilkan notifikasi sistem bersuara di HP
-                  _showSystemNotification(
-                    latestNotif['judul'] ?? 'Notifikasi Baru',
-                    latestNotif['pesan'] ?? '',
-                  );
+                  if (!kIsWeb) {
+                    _showSystemNotification(
+                      latestNotif['judul'] ?? 'Notifikasi Baru',
+                      latestNotif['pesan'] ?? '',
+                    );
+                  }
                 }
               }
             }
@@ -229,6 +280,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _cancelNotificationRealtimeListener() {
+    _listenedUserId = null;
     _notificationSubscription?.cancel();
     _notificationSubscription = null;
   }
@@ -238,12 +290,14 @@ class _AuthGateState extends State<AuthGate> {
 
     setState(() {
       _currentSession = session;
+      _currentUserId = session?.user.id;
       _roleFuture = session == null ? null : _getUserRole(session.user);
       _isLoading = false;
     });
 
     if (session != null) {
       _setupNotificationRealtimeListener(session.user.id);
+      NotificationService.saveDeviceToken();
     }
   }
 
@@ -253,17 +307,24 @@ class _AuthGateState extends State<AuthGate> {
     ) {
       if (!mounted) return;
 
-      setState(() {
-        _currentSession = data.session;
-        _roleFuture = data.session == null
-            ? null
-            : _getUserRole(data.session!.user);
-      });
+      final newSession = data.session;
+      final newUserId = newSession?.user.id;
 
-      if (data.session != null) {
-        _setupNotificationRealtimeListener(data.session!.user.id);
-      } else {
-        _cancelNotificationRealtimeListener();
+      if (_currentUserId != newUserId) {
+        setState(() {
+          _currentSession = newSession;
+          _currentUserId = newUserId;
+          _roleFuture = newSession == null
+              ? null
+              : _getUserRole(newSession.user);
+        });
+
+        if (newSession != null) {
+          _setupNotificationRealtimeListener(newSession.user.id);
+          NotificationService.saveDeviceToken();
+        } else {
+          _cancelNotificationRealtimeListener();
+        }
       }
     });
   }

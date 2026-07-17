@@ -46,3 +46,12 @@ app.*.map.json
 
 .env
 **/android/key.properties
+**/*.keystore
+**/*.jks
+**/google-services.json
+**/GoogleService-Info.plist
+*service-account*.json
+*firebase-key*.json
+*adminsdk*.json
+supabase/.env
+supabase/.env.local
