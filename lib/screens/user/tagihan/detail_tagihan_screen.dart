@@ -30,7 +30,21 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
   @override
   void initState() {
     super.initState();
-    _statusPembayaran = widget.invoice['status_pembayaran'] ?? 'BELUM';
+    final String rawStatus = widget.invoice['status_pembayaran'] ?? 'BELUM';
+    final String jtRaw = widget.invoice['tanggal_jatuh_tempo'] ?? '';
+    bool isOverdue = false;
+    if (rawStatus.toUpperCase() != 'LUNAS' && jtRaw.isNotEmpty) {
+      try {
+        final jtDate = DateTime.parse(jtRaw);
+        final today = DateTime.now();
+        final todayZero = DateTime(today.year, today.month, today.day);
+        final dueZero = DateTime(jtDate.year, jtDate.month, jtDate.day);
+        if (dueZero.isBefore(todayZero)) {
+          isOverdue = true;
+        }
+      } catch (_) {}
+    }
+    _statusPembayaran = isOverdue ? 'Lewat Jatuh Tempo' : rawStatus;
     _buktiTransferUrl = widget.invoice['bukti_transfer_url'];
     _fetchSewaDetails();
   }

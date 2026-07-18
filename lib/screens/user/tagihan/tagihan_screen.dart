@@ -477,17 +477,33 @@ class _BillTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isPaid = invoice['status_pembayaran']?.toString().toUpperCase() == 'LUNAS';
+    final String status = invoice['status_pembayaran'] ?? 'Belum Bayar';
+    final bool isPaid = status.toUpperCase() == 'LUNAS';
+    final String jtRaw = invoice['tanggal_jatuh_tempo'] ?? '';
+    
+    bool isOverdue = false;
+    if (!isPaid && jtRaw.isNotEmpty) {
+      try {
+        final jtDate = DateTime.parse(jtRaw);
+        final today = DateTime.now();
+        final todayZero = DateTime(today.year, today.month, today.day);
+        final dueZero = DateTime(jtDate.year, jtDate.month, jtDate.day);
+        if (dueZero.isBefore(todayZero)) {
+          isOverdue = true;
+        }
+      } catch (_) {}
+    }
+    
     final accentColor = isPaid
         ? TagihanScreen._primaryColor
-        : const Color(0xFFF1B64C);
+        : (isOverdue ? TagihanScreen._dangerColor : const Color(0xFFF1B64C));
 
     final String title = _getBulanSewa(invoice['tanggal_dibuat']);
     final String dateStr = isPaid
         ? "Dibayar: ${_formatTanggal(invoice['tanggal_dibuat'])}"
         : "Jatuh tempo: ${_formatTanggal(invoice['tanggal_jatuh_tempo'])}";
     final String amountStr = _formatRupiah(invoice['total_tagihan']);
-    final String statusLabel = invoice['status_pembayaran'] ?? 'BELUM';
+    final String statusLabel = isOverdue ? 'Lewat Jatuh Tempo' : status;
 
     return Material(
       color: Colors.white,

@@ -275,12 +275,31 @@ class _TransactionCard extends StatelessWidget {
     final String status = item['status_pembayaran'] ?? 'Belum Bayar';
     final num amount = item['total_tagihan'] ?? 0;
     final String dateStr = item['tanggal_dibuat'] ?? '';
+    final String dueDateStr = item['tanggal_jatuh_tempo'] ?? '';
+
+    bool isOverdue = false;
+    if (status.toLowerCase() != 'lunas' && dueDateStr.isNotEmpty) {
+      try {
+        final dueDate = DateTime.parse(dueDateStr).toLocal();
+        final today = DateTime.now();
+        final todayDateOnly = DateTime(today.year, today.month, today.day);
+        final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        if (dueDateOnly.isBefore(todayDateOnly)) {
+          isOverdue = true;
+        }
+      } catch (_) {}
+    }
+
+    final String displayStatus = isOverdue ? 'Lewat Jatuh Tempo' : status;
 
     // Color logic according to status
     Color paidColor;
     Color paidBackground;
 
-    if (status.toLowerCase() == 'lunas') {
+    if (displayStatus == 'Lewat Jatuh Tempo') {
+      paidColor = const Color(0xFFD32F2F); // Dark Red
+      paidBackground = const Color(0xFFFFCDD2);
+    } else if (status.toLowerCase() == 'lunas') {
       paidColor = const Color(0xFF2E7D32); // Green
       paidBackground = const Color(0xFFE8F5E9);
     } else if (status.toLowerCase() == 'belum' || status.toLowerCase() == 'belum bayar') {
@@ -357,7 +376,7 @@ class _TransactionCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      status.toUpperCase(),
+                      displayStatus.toUpperCase(),
                       style: TextStyle(
                         color: paidColor,
                         fontSize: 9,

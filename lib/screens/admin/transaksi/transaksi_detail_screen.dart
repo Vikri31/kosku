@@ -328,7 +328,22 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
     final String dateStr = _invoiceData!['tanggal_dibuat'] ?? '';
     final String methodStr = _pemasukanData?['metode_bayar'] ?? '-';
     final String invoiceNum = _invoiceData!['nomor_invoice'] ?? '-';
+    final String dueDateStr = _invoiceData!['tanggal_jatuh_tempo'] ?? '';
 
+    bool isOverdue = false;
+    if (status.toLowerCase() != 'lunas' && dueDateStr.isNotEmpty) {
+      try {
+        final dueDate = DateTime.parse(dueDateStr).toLocal();
+        final today = DateTime.now();
+        final todayDateOnly = DateTime(today.year, today.month, today.day);
+        final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        if (dueDateOnly.isBefore(todayDateOnly)) {
+          isOverdue = true;
+        }
+      } catch (_) {}
+    }
+
+    final String displayStatus = isOverdue ? 'Lewat Jatuh Tempo' : status;
     final bool isPaid = status.toLowerCase() == 'lunas';
 
     return Scaffold(
@@ -354,7 +369,7 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
           child: Column(
             children: [
               // Paid status pill
-              _PaidPill(isPaid: isPaid, status: status),
+              _PaidPill(isPaid: isPaid, status: displayStatus),
               const SizedBox(height: 20),
 
               // Total Tagihan Amount
@@ -478,7 +493,10 @@ class _PaidPill extends StatelessWidget {
     Color paidColor;
     Color paidBackground;
 
-    if (isPaid) {
+    if (status == 'Lewat Jatuh Tempo') {
+      paidColor = const Color(0xFFD32F2F); // Dark Red
+      paidBackground = const Color(0xFFFFCDD2);
+    } else if (isPaid) {
       paidColor = const Color(0xFF2E7D32); // Green
       paidBackground = const Color(0xFFE8F5E9);
     } else if (status.toLowerCase() == 'belum' || status.toLowerCase() == 'belum bayar') {
@@ -499,7 +517,9 @@ class _PaidPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isPaid ? Icons.check_circle : Icons.schedule_rounded,
+            status == 'Lewat Jatuh Tempo'
+                ? Icons.warning_amber_rounded
+                : (isPaid ? Icons.check_circle : Icons.schedule_rounded),
             color: paidColor,
             size: 14,
           ),

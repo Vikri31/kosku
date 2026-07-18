@@ -79,3 +79,58 @@ SELECT cron.schedule(
     '0 17 * * *',                      -- Cron expression: Setiap hari jam 17:00 UTC (00:00 WIB)
     $$ SELECT generate_monthly_invoices(); $$
 );
+
+-- 4. Membuat Trigger untuk generate invoice awal secara otomatis setelah kontrak sewa baru di-INSERT
+CREATE OR REPLACE FUNCTION create_initial_invoice()
+RETURNS TRIGGER AS $$
+DECLARE
+    room_price int8;
+    room_no text;
+    new_invoice_no text;
+    periode text;
+BEGIN
+    -- Ambil harga sewa dan nomor kamar dari tabel kamar
+    SELECT harga_sewa_dasar, nomor_kamar INTO room_price, room_no
+    FROM kamar
+    WHERE id_kamar = NEW.id_kamar;
+    
+    -- Format nomor invoice unik: INV/YYYYMMDD/KM-{no_kamar}/{id_sewa}-1
+    new_invoice_no := 'INV/' || to_char(NEW.tanggal_masuk, 'YYYYMMDD') || '/KM-' || room_no || '/' || NEW.id_sewa || '-1';
+    
+    -- Format periode sewa, misal: "July 2026"
+    periode := to_char(NEW.tanggal_masuk, 'Month YYYY');
+    
+    -- Sisipkan invoice awal dengan status 'Belum Bayar'
+    INSERT INTO invoice (
+        id_sewa,
+        nomor_invoice,
+        periode_sewa,
+        biaya_sewa_pokok,
+        biaya_listrik,
+        biaya_kebersihan,
+        total_tagihan,
+        status_pembayaran,
+        tanggal_dibuat,
+        tanggal_jatuh_tempo
+    ) VALUES (
+        NEW.id_sewa,
+        new_invoice_no,
+        trim(periode),
+        room_price,
+        0,
+        0,
+        room_price,
+        'Belum Bayar',
+        NEW.tanggal_masuk,
+        NEW.tanggal_masuk -- Jatuh tempo hari pertama masuk
+    );
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_create_initial_invoice
+AFTER INSERT ON sewa
+FOR EACH ROW
+WHEN (NEW.status_sewa = 'Aktif')
+EXECUTE FUNCTION create_initial_invoice();

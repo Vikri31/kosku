@@ -294,8 +294,10 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
 
       if (unpaidInvoice != null) {
         nominalTagihanActive = _formatRupiah(unpaidInvoice['total_tagihan']);
-        statusTagihanActive = unpaidInvoice['status_pembayaran'] ?? 'BELUM';
+        final String rawStatus = unpaidInvoice['status_pembayaran'] ?? 'BELUM';
         final String jtRaw = unpaidInvoice['tanggal_jatuh_tempo'] ?? '';
+        bool isOverdue = false;
+        
         try {
           final jtDate = DateTime.parse(jtRaw);
           jatuhTempoActive =
@@ -309,9 +311,14 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           if (diff <= 7 && diff >= 0) {
             dekatJatuhTempoActive = true;
           }
+          if (diff < 0) {
+            isOverdue = true;
+          }
         } catch (_) {
           jatuhTempoActive = jtRaw;
         }
+
+        statusTagihanActive = isOverdue ? 'Lewat Jatuh Tempo' : rawStatus;
       }
 
       for (var inv in invoices) {
