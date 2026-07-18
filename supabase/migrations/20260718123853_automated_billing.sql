@@ -1,3 +1,10 @@
+-- 0. Update struktur tabel invoice jika kolom tambahan belum ada
+ALTER TABLE invoice ADD COLUMN IF NOT EXISTS periode_sewa text;
+ALTER TABLE invoice ADD COLUMN IF NOT EXISTS biaya_sewa_pokok int8 DEFAULT 0;
+ALTER TABLE invoice ADD COLUMN IF NOT EXISTS biaya_listrik int8 DEFAULT 0;
+ALTER TABLE invoice ADD COLUMN IF NOT EXISTS biaya_kebersihan int8 DEFAULT 0;
+ALTER TABLE invoice ADD COLUMN IF NOT EXISTS bukti_transfer_url text;
+
 -- 1. Mengaktifkan ekstensi pg_cron di schema extensions jika belum aktif
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
