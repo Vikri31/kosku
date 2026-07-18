@@ -80,16 +80,24 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
     setState(() => _isLoadingKamars = true);
     try {
       final client = Supabase.instance.client;
+      final adminId = client.auth.currentUser?.id;
+      if (adminId == null) {
+        _availableKamars = [];
+        return;
+      }
+
       final List<dynamic> result;
       if (_isEditMode && _selectedKamarId != null) {
         result = await client
             .from('kamar')
             .select('id_kamar, nomor_kamar')
+            .eq('id_admin', adminId)
             .or('status_kamar.eq.Kosong,id_kamar.eq.$_selectedKamarId');
       } else {
         result = await client
             .from('kamar')
             .select('id_kamar, nomor_kamar')
+            .eq('id_admin', adminId)
             .eq('status_kamar', 'Kosong');
       }
       _availableKamars = List<Map<String, dynamic>>.from(result);

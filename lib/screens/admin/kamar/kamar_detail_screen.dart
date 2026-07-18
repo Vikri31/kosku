@@ -880,6 +880,64 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
     );
   }
 
+  void _showKtpDialog(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              title: const Text(
+                'Foto KTP Penyewa',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.black87),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(color: primaryColor),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Text('Gagal memuat foto KTP'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ==================== KAMAR KOSONG UI LAYOUT ====================
   Widget _buildKamarKosongSection() {
     if (_isLoading) {
@@ -1492,6 +1550,38 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
               _buildInfoRow('No. WhatsApp', wa, canCopy: true),
               const Divider(height: 24),
               _buildInfoRow('No. KTP (NIK)', nik, canCopy: true),
+              if (_detailPenyewaData?['foto_ktp_url'] != null &&
+                  _detailPenyewaData!['foto_ktp_url'].toString().isNotEmpty) ...[
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Foto KTP',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: primaryColor,
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.credit_card_outlined, size: 18),
+                      label: const Text(
+                        'Lihat KTP',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      onPressed: () => _showKtpDialog(
+                        context,
+                        _detailPenyewaData!['foto_ktp_url'].toString(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -1499,26 +1589,28 @@ class _KamarDetailScreenState extends State<KamarDetailScreen> {
 
         // 3. Tombol Aksi Utama (Vertikal Lebar)
         if (_sewaData != null) ...[
-          _buildActionButton(
-            label: 'Tambah Pembayaran',
-            icon: Icons.add_card_outlined,
-            color: primaryColor,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TambahTransaksiScreen(
-                    initialSewaId: _sewaData!['id_sewa'],
+          if (_detailPenyewaData?['id_user'] == null) ...[
+            _buildActionButton(
+              label: 'Tambah Pembayaran',
+              icon: Icons.add_card_outlined,
+              color: primaryColor,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TambahTransaksiScreen(
+                      initialSewaId: _sewaData!['id_sewa'],
+                    ),
                   ),
-                ),
-              ).then((value) {
-                if (value == true) {
-                  _loadData();
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 12),
+                ).then((value) {
+                  if (value == true) {
+                    _loadData();
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
           _buildActionButton(
             label: 'Keluarkan Penyewa',
             icon: Icons.exit_to_app_outlined,

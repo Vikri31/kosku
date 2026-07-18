@@ -61,7 +61,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/icon_kosku.jpeg"
+  image_path: "assets/images/Logo_KosKu.png"
 
 
 # For information on the generic Dart part of this file, see the

@@ -243,7 +243,7 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           .update({'status_request': 'Disetujui'})
           .eq('id_request', widget.idRequest);
 
-      // 6. Send notification to tenant
+      // 6. Send notification to tenant and owner
       try {
         final roomNo = _kamarData?['nomor_kamar'] ?? '-';
         await NotificationService.sendNotification(
@@ -252,8 +252,19 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           pesan: 'Selamat! Pengajuan Anda ke Kamar $roomNo telah disetujui.',
           kategori: 'penyewa',
         );
+
+        // Kirim notifikasi ke Pemilik Kost (admin)
+        final idAdmin = _kamarData?['id_admin'] ?? client.auth.currentUser?.id;
+        if (idAdmin != null) {
+          await NotificationService.sendNotification(
+            idUser: idAdmin,
+            judul: 'Penghuni Baru Bergabung! 🏠',
+            pesan: '$nama telah berhasil bergabung ke Kamar $roomNo.',
+            kategori: 'penyewa_join',
+          );
+        }
       } catch (e) {
-        debugPrint('Gagal mengirim notifikasi persetujuan: $e');
+        debugPrint('Gagal mengirim notifikasi persetujuan/bergabung: $e');
       }
 
       if (mounted) {

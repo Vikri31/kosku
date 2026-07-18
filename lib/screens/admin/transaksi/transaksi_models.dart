@@ -17,6 +17,7 @@ class TransactionItem {
   final String phone;
   final String invoiceNumber;
   final int electricityFee;
+  final bool isManual;
 
   const TransactionItem({
     required this.id,
@@ -30,6 +31,7 @@ class TransactionItem {
     required this.phone,
     required this.invoiceNumber,
     this.electricityFee = 150000,
+    this.isManual = true,
   });
 
   int get totalAmount => amount + electricityFee;

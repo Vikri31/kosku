@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const Color _kPrimary = Color(0xFF1A7C6A);
@@ -63,8 +63,8 @@ class _RegisterPenghuniScreenState extends State<RegisterPenghuniScreen> {
             duration: const Duration(seconds: 4),
           ),
         );
-        // Kembali ke login setelah register sukses
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+        // Masuk ke halaman utama setelah register sukses (Opsi B)
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -139,7 +139,7 @@ class _RegisterPenghuniScreenState extends State<RegisterPenghuniScreen> {
                     children: [
                       // ── Logo KosKu ──────────────────────────────────
                       Image.asset(
-                        'assets/images/icon_kosku.jpeg',
+                        'assets/images/Logo_KosKu.png',
                         height: 90,
                         errorBuilder: (context, error, stackTrace) => Container(
                           width: 80,

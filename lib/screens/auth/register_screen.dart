@@ -133,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       // --- Logo KosKu ---
                       Image.asset(
-                        'assets/images/icon_kosku.jpeg',
+                        'assets/images/Logo_KosKu.png',
                         height: 90,
                         errorBuilder: (context, error, stackTrace) =>
                             Container(

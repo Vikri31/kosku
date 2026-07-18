@@ -21,6 +21,7 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
   bool _isDeleting = false;
   Map<String, dynamic>? _invoiceData;
   Map<String, dynamic>? _pemasukanData;
+  bool _isManualTenant = true;
 
   @override
   void initState() {
@@ -51,6 +52,21 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
           .maybeSingle();
 
       _pemasukanData = pemasukan;
+
+      // 3. Check if tenant is manual (no auth user account)
+      final sewa = invoice['sewa'];
+      final penyewa = sewa?['penyewa'];
+      final nik = penyewa?['nik'];
+      if (nik != null) {
+        final detailPenyewa = await client
+            .from('detail_penyewa')
+            .select('id_user')
+            .eq('nik', nik)
+            .maybeSingle();
+        if (detailPenyewa != null && detailPenyewa['id_user'] != null) {
+          _isManualTenant = false;
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -184,6 +200,7 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
       phone: penyewa?['nomor_whatsapp'] ?? '-',
       invoiceNumber: _invoiceData!['nomor_invoice'] ?? '-',
       electricityFee: 0,
+      isManual: _isManualTenant,
     );
 
     Navigator.push(
@@ -196,6 +213,87 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
         _loadDetail();
       }
     });
+  }
+
+  Future<void> _tandaiLunas() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Konfirmasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text('Apakah Anda yakin ingin menandai transaksi ini sebagai Lunas?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Ya, Lunas', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final client = Supabase.instance.client;
+
+      // 1. Update invoice status to 'Lunas'
+      await client
+          .from('invoice')
+          .update({
+            'status_pembayaran': 'Lunas',
+          })
+          .eq('id_invoice', widget.idInvoice);
+
+      // 2. Insert into pemasukan table if not exists
+      if (_pemasukanData == null) {
+        final amount = _invoiceData!['total_tagihan'] as num;
+        final nowStr = DateTime.now().toIso8601String().split('T').first;
+        await client.from('pemasukan').insert({
+          'id_invoice': widget.idInvoice,
+          'tanggal_bayar': nowStr,
+          'nominal_masuk': amount,
+          'metode_bayar': 'Transfer', // Default payment method
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaksi berhasil ditandai sebagai Lunas!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _loadDetail(); // Reload detail to reflect updated status
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menandai lunas: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -306,7 +404,7 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
               ),
               const Spacer(),
 
-              // Generate Invoice Button
+              // Generate Invoice Button & Sudah Dibayarkan Button
               if (status.toUpperCase() != 'LUNAS') ...[
                 SizedBox(
                   width: double.infinity,
@@ -318,6 +416,23 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
                     style: ElevatedButton.styleFrom(
                       elevation: 2,
                       backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _tandaiLunas,
+                    icon: const Icon(Icons.check_circle_outline, size: 20),
+                    label: const Text('Sudah Dibayarkan (Konfirmasi Lunas)'),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 2,
+                      backgroundColor: const Color(0xFF2E7D32), // Green color
                       foregroundColor: Colors.white,
                       textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

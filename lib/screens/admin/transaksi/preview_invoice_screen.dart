@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'transaksi_models.dart';
 
 class PreviewInvoiceScreen extends StatefulWidget {
@@ -84,13 +85,76 @@ class _PreviewInvoiceScreenState extends State<PreviewInvoiceScreen> {
     }
   }
 
+  Future<void> _kirimWhatsapp() async {
+    setState(() => _isSending = true);
+    String phone = widget.item.phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (phone.startsWith('0')) {
+      phone = '62${phone.substring(1)}';
+    }
+    
+    // Format invoice text
+    final String text = '''
+*INVOICE KOSKU*
+Nomor Invoice: ${widget.item.invoiceNumber}
+Nama Penyewa: ${widget.item.tenantName}
+Kamar: ${widget.item.room}
+Tanggal Tagihan: ${_formatDate(widget.item.paymentDate)}
+Total Tagihan: ${_formatRupiah(widget.item.amount)}
+
+Status: *BELUM BAYAR*
+
+Silakan lakukan pembayaran sewa kamar Anda. Terima kasih.
+''';
+
+    final Uri url = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(text)}');
+    try {
+      if (await canLaunchUrl(url)) {
+        // Update status invoice di Supabase menjadi 'Belum Bayar'
+        final client = Supabase.instance.client;
+        await client
+            .from('invoice')
+            .update({
+              'status_pembayaran': 'Belum Bayar',
+            })
+            .eq('id_invoice', int.parse(widget.item.id));
+
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+            
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('WhatsApp berhasil dibuka dan status invoice diperbarui!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        throw 'Tidak dapat membuka WhatsApp. Pastikan aplikasi WhatsApp terpasang.';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka WhatsApp: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dynamic values for calculations
     final num sewaKamar = widget.item.amount;
-    const num biayaListrik = 150000;
-    const num biayaKebersihan = 50000;
-    final num totalTagihan = sewaKamar + biayaListrik + biayaKebersihan;
+    final num totalTagihan = sewaKamar;
 
     // Estimate due date (7 days from invoice date)
     final dueDate = widget.item.paymentDate.add(const Duration(days: 7));
@@ -277,18 +341,7 @@ class _PreviewInvoiceScreenState extends State<PreviewInvoiceScreen> {
                                 'Sewa Kamar (1 Bulan)',
                                 _formatRupiah(sewaKamar),
                               ),
-                              const SizedBox(height: 12),
-                              _buildBillRow(
-                                Icons.electric_bolt_outlined,
-                                'Listrik (Token/Meter)',
-                                _formatRupiah(biayaListrik),
-                              ),
-                              const SizedBox(height: 12),
-                              _buildBillRow(
-                                Icons.cleaning_services_outlined,
-                                'Biaya Kebersihan',
-                                _formatRupiah(biayaKebersihan),
-                              ),
+                              // Biaya listrik & kebersihan dihilangkan sesuai permintaan user
                               const SizedBox(height: 20),
                               const Divider(height: 1, color: Color(0xFFEEEEEE)),
                               const SizedBox(height: 20),
@@ -375,11 +428,16 @@ class _PreviewInvoiceScreenState extends State<PreviewInvoiceScreen> {
                 child: _isSending
                     ? const Center(child: CircularProgressIndicator(color: primaryColor))
                     : ElevatedButton.icon(
-                        onPressed: _kirimInvoice,
-                        icon: const Icon(Icons.send_rounded, size: 18),
-                        label: const Text('Kirim Invoice ke Penyewa'),
+                        onPressed: widget.item.isManual ? _kirimWhatsapp : _kirimInvoice,
+                        icon: Icon(
+                          widget.item.isManual ? Icons.chat_outlined : Icons.send_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          widget.item.isManual ? 'Kirim Invoice ke WhatsApp' : 'Kirim Invoice ke Penyewa',
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
+                          backgroundColor: widget.item.isManual ? const Color(0xFF25D366) : primaryColor,
                           foregroundColor: Colors.white,
                           elevation: 2,
                           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),

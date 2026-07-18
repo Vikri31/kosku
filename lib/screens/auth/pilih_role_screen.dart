@@ -115,7 +115,7 @@ class _PilihRoleScreenState extends State<PilihRoleScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.asset(
-              'assets/images/icon_kosku.jpeg',
+              'assets/images/Logo_KosKu.png',
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) => const Icon(Icons.home_work_rounded, size: 56, color: _kPrimary),
             ),

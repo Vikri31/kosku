@@ -21,6 +21,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
   final _phoneController = TextEditingController();
   final _nikController = TextEditingController();
   final _tglLahirController = TextEditingController();
+  final _emailController = TextEditingController();
 
   // State variables
   DateTime? _selectedDate;
@@ -31,7 +32,6 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
 
   bool _isLoading = false;
   bool _isDataLoaded = false;
-  bool _isNikDisabled = false;
   Map<String, dynamic>? _existingDetailPenyewa;
 
   // Colors
@@ -54,6 +54,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
     _phoneController.dispose();
     _nikController.dispose();
     _tglLahirController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -65,7 +66,8 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       final currentUser = client.auth.currentUser;
 
       if (currentUser != null) {
-        // Pre-populate name and phone from Auth metadata if available
+        // Pre-populate name, phone and email from Auth metadata/session if available
+        _emailController.text = currentUser.email ?? '';
         final meta = currentUser.userMetadata;
         if (meta != null) {
           if (meta['nama_lengkap'] != null) {
@@ -87,7 +89,6 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
           _existingDetailPenyewa = detail;
           if (detail['nik'] != null && detail['nik'].toString().isNotEmpty) {
             _nikController.text = detail['nik'].toString();
-            _isNikDisabled = true; // Lock NIK after it has been saved
           }
           if (detail['tanggal_lahir'] != null) {
             final tglStr = detail['tanggal_lahir'].toString();
@@ -122,7 +123,6 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
 
               if (detailByNik != null) {
                 _existingDetailPenyewa = detailByNik;
-                _isNikDisabled = true;
                 if (detailByNik['tanggal_lahir'] != null) {
                   final tglStr = detailByNik['tanggal_lahir'].toString();
                   _tglLahirController.text = tglStr;
@@ -285,48 +285,89 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       final alamatKtp = _existingDetailPenyewa?['alamat_ktp'] ?? '-';
       final pekerjaan = _existingDetailPenyewa?['pekerjaan'] ?? '-';
 
-      // 2. Upsert to detail_penyewa
-      final payloadDetail = {
-        'nik': nik,
-        'id_user': currentUser.id,
-        'tempat_lahir': tempatLahir,
-        'tanggal_lahir': tglLahirStr,
-        'jenis_kelamin': jenisKelamin,
-        'alamat_ktp': alamatKtp,
-        'pekerjaan': pekerjaan,
-        'foto_ktp_url': ktpUrl,
-        'foto_profil_url': profileUrl,
-        'nama_lengkap': namaLengkap, // For safety / query compatibility
-        'nomor_whatsapp': nomorWhatsapp,
-      };
+      // 2. Upsert/Update detail_penyewa and penyewa tables
+      final oldNik = _existingDetailPenyewa?['nik']?.toString();
 
-      await client.from('detail_penyewa').upsert(payloadDetail);
+      if (oldNik != null && oldNik.isNotEmpty && oldNik != nik) {
+        // 1. Buat detail_penyewa baru dengan NIK yang baru
+        final payloadDetail = {
+          'nik': nik,
+          'id_user': currentUser.id,
+          'tempat_lahir': tempatLahir,
+          'tanggal_lahir': tglLahirStr,
+          'jenis_kelamin': jenisKelamin,
+          'alamat_ktp': alamatKtp,
+          'pekerjaan': pekerjaan,
+          'foto_ktp_url': ktpUrl,
+          'foto_profil_url': profileUrl,
+          'nama_lengkap': namaLengkap,
+          'nomor_whatsapp': nomorWhatsapp,
+        };
+        await client.from('detail_penyewa').insert(payloadDetail);
 
-      // 3. Upsert to penyewa table if NIK is valid
-      try {
-        final existingPenyewa = await client
-            .from('penyewa')
-            .select()
-            .eq('nik', nik)
-            .maybeSingle();
-
-        if (existingPenyewa != null) {
+        // 2. Update tabel penyewa untuk menggunakan NIK baru
+        try {
           await client
               .from('penyewa')
               .update({
+                'nik': nik,
                 'nama_lengkap': namaLengkap,
                 'nomor_whatsapp': nomorWhatsapp,
               })
-              .eq('nik', nik);
-        } else {
-          await client.from('penyewa').insert({
-            'nik': nik,
-            'nama_lengkap': namaLengkap,
-            'nomor_whatsapp': nomorWhatsapp,
-          });
+              .eq('nik', oldNik);
+        } catch (e) {
+          debugPrint('Update NIK di penyewa error: $e');
         }
-      } catch (e) {
-        debugPrint('Upsert penyewa table error (suppressed): $e');
+
+        // 3. Hapus detail_penyewa lama
+        try {
+          await client.from('detail_penyewa').delete().eq('nik', oldNik);
+        } catch (e) {
+          debugPrint('Hapus detail_penyewa lama error: $e');
+        }
+      } else {
+        // Jika NIK baru (pertama kali) atau tidak berubah, gunakan upsert biasa
+        final payloadDetail = {
+          'nik': nik,
+          'id_user': currentUser.id,
+          'tempat_lahir': tempatLahir,
+          'tanggal_lahir': tglLahirStr,
+          'jenis_kelamin': jenisKelamin,
+          'alamat_ktp': alamatKtp,
+          'pekerjaan': pekerjaan,
+          'foto_ktp_url': ktpUrl,
+          'foto_profil_url': profileUrl,
+          'nama_lengkap': namaLengkap,
+          'nomor_whatsapp': nomorWhatsapp,
+        };
+        await client.from('detail_penyewa').upsert(payloadDetail);
+
+        // Dan update/insert tabel penyewa
+        try {
+          final existingPenyewa = await client
+              .from('penyewa')
+              .select()
+              .eq('nik', nik)
+              .maybeSingle();
+
+          if (existingPenyewa != null) {
+            await client
+                .from('penyewa')
+                .update({
+                  'nama_lengkap': namaLengkap,
+                  'nomor_whatsapp': nomorWhatsapp,
+                })
+                .eq('nik', nik);
+          } else {
+            await client.from('penyewa').insert({
+              'nik': nik,
+              'nama_lengkap': namaLengkap,
+              'nomor_whatsapp': nomorWhatsapp,
+            });
+          }
+        } catch (e) {
+          debugPrint('Upsert penyewa error: $e');
+        }
       }
 
       // 4. Update Supabase Auth User Metadata (data_lengkap = true)
@@ -500,7 +541,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // No Handphone
+                 // No Handphone
                 _buildTextField(
                   controller: _phoneController,
                   label: 'Nomor Handphone (WA)',
@@ -519,14 +560,24 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // Email (Read-Only)
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Alamat Email (Akun)',
+                  hint: 'Email tidak tersedia',
+                  icon: Icons.email_outlined,
+                  enabled: false,
+                ),
+                const SizedBox(height: 16),
+
                 // NIK
                 _buildTextField(
                   controller: _nikController,
                   label: 'NIK (Nomor Induk Kependudukan)',
-                  hint: 'Masukkan 16 digit NIK',
+                  hint: _nikController.text.isEmpty ? 'Belum diisi (Masukkan 16 digit NIK)' : 'Masukkan 16 digit NIK',
                   icon: Icons.badge_outlined,
                   keyboardType: TextInputType.number,
-                  enabled: !_isNikDisabled,
+                  enabled: true,
                   maxLength: 16,
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {

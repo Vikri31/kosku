@@ -708,12 +708,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
 
               if (unpaidInvoices.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Text(
-                      'Tidak ada tagihan yang belum lunas.',
-                      style: TextStyle(color: Colors.grey),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Card(
+                    color: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.shade100),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Center(
+                        child: Text(
+                          'Tidak ada tagihan yang belum lunas.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      ),
                     ),
                   ),
                 )
@@ -725,6 +737,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.shade100),
                     ),
                     child: ListView.separated(
                       shrinkWrap: true,
@@ -879,12 +892,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey.shade100),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24.0),
                       child: Center(
                         child: Text(
                           'Tidak ada bukti bayar masuk yang perlu diverifikasi.',
+                          textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey[500]),
                         ),
                       ),

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../tagihan/tagihan_screen.dart';
 import '../profil/profil_penghuni_screen.dart';
+import '../../../services/notification_service.dart';
 
 // ── Warna tema KosKu ────────────────────────────────────────────────────────
 const Color _kPrimary = Color(0xFF004D40);
@@ -24,6 +25,7 @@ class DashboardPenghuniScreen extends StatefulWidget {
 class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
   bool _isLoading = true;
   String? _errorMessage;
+  Stream<List<Map<String, dynamic>>>? _notificationStream;
 
   String _namaPenghuni = '-';
   String _namaKos = 'Memuat kos...';
@@ -60,10 +62,38 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
     }
   }
 
+  RealtimeChannel? _invoiceChannel;
+
   @override
   void initState() {
     super.initState();
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      _notificationStream = NotificationService.streamNotifications(user.id);
+    }
     _fetchDashboardData();
+    _subscribeRealtime();
+  }
+
+  void _subscribeRealtime() {
+    final client = Supabase.instance.client;
+    _invoiceChannel = client.channel('public:invoice_user').onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'invoice',
+      callback: (payload) {
+        debugPrint('Invoice change detected, refetching tenant dashboard data...');
+        _fetchDashboardData();
+      },
+    ).subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_invoiceChannel != null) {
+      Supabase.instance.client.removeChannel(_invoiceChannel!);
+    }
+    super.dispose();
   }
 
   Future<void> _fetchDashboardData() async {
@@ -524,11 +554,42 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           ),
           Row(
             children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/notifications');
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _notificationStream,
+                builder: (context, snapshot) {
+                  bool hasUnread = false;
+                  if (snapshot.hasData && snapshot.data != null) {
+                    hasUnread = snapshot.data!.any((notif) => notif['status_dibaca'] == false);
+                  }
+
+                  return Stack(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/notifications');
+                        },
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      if (hasUnread)
+                        Positioned(
+                          right: 10,
+                          top: 10,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: _kDanger,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
                 },
-                icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
               ),
             ],
           ),
