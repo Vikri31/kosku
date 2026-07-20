@@ -249,8 +249,12 @@ class _TagihanScreenState extends State<TagihanScreen> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 18, 14, 20),
+              child: RefreshIndicator(
+                onRefresh: _fetchInvoices,
+                color: TagihanScreen._primaryColor,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -343,6 +347,7 @@ class _TagihanScreenState extends State<TagihanScreen> {
                   ],
                 ),
               ),
+            ),
             ),
             const PenghuniBottomNav(currentIndex: 1),
           ],

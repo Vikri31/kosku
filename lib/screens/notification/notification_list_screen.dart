@@ -11,13 +11,23 @@ class NotificationListScreen extends StatefulWidget {
 
 class _NotificationListScreenState extends State<NotificationListScreen> {
   final _supabase = Supabase.instance.client;
-  late final Stream<List<Map<String, dynamic>>> _notificationStream;
+  late Stream<List<Map<String, dynamic>>> _notificationStream;
 
   @override
   void initState() {
     super.initState();
+    _initStream();
+  }
+
+  void _initStream() {
     final String currentUserId = _supabase.auth.currentUser!.id;
     _notificationStream = NotificationService.streamNotifications(currentUserId);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _initStream();
+    });
   }
 
   String _formatRelativeTime(String? dateStr) {
@@ -66,81 +76,96 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
         ),
       ),
       body: SafeArea(
-        child: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: _notificationStream,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Gagal memuat notifikasi:\n${snapshot.error}',
-                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          color: primaryColor,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _notificationStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Gagal memuat notifikasi:\n${snapshot.error}',
+                              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              );
-            }
+                    ),
+                  ],
+                );
+              }
 
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: primaryColor));
-            }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: primaryColor));
+              }
 
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(45),
-                        ),
-                        child: const Icon(
-                          Icons.notifications_none_rounded,
-                          size: 40,
-                          color: primaryColor,
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(45),
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none_rounded,
+                                size: 40,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Belum Ada Notifikasi',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2C3E50),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Semua notifikasi terkait sewa dan pembayaran Anda akan muncul di sini.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Belum Ada Notifikasi',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Semua notifikasi terkait sewa dan pembayaran Anda akan muncul di sini.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
+                    ),
+                  ],
+                );
+              }
 
             final notifications = snapshot.data!;
 
             return ListView.builder(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               itemCount: notifications.length,
               itemBuilder: (context, index) {
@@ -269,7 +294,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                 );
               },
             );
-          },
+            },
+          ),
         ),
       ),
     );

@@ -107,6 +107,56 @@ class _DetailKamarScreenState extends State<DetailKamarScreen> {
   }
 
   Future<void> _keluarkanPenyewa(int idSewa, String nomorKamar) async {
+    // 1. Cek apakah ada tagihan yang belum lunas
+    setState(() => _isLoadingSewa = true);
+    try {
+      final client = Supabase.instance.client;
+      final unpaidInvoices = await client
+          .from('invoice')
+          .select()
+          .eq('id_sewa', idSewa)
+          .neq('status_pembayaran', 'Lunas');
+
+      if (!mounted) return;
+
+      if (unpaidInvoices.isNotEmpty) {
+        setState(() => _isLoadingSewa = false);
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Gagal Mengeluarkan Penyewa',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+            ),
+            content: const Text(
+              'Penyewa tidak dapat dikeluarkan karena masih memiliki tagihan yang belum dilunasi. Harap konfirmasi pelunasan semua tagihan terlebih dahulu.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      setState(() => _isLoadingSewa = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengecek status tagihan: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoadingSewa = false);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

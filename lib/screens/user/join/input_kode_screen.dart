@@ -207,7 +207,7 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
           idUser: idAdmin,
           judul: 'Pengajuan Bergabung Baru 🚪',
           pesan: '$tenantName mengajukan permintaan bergabung ke Kamar $roomNo.',
-          kategori: 'permintaan_bergabung',
+          kategori: 'admin',
         );
       }
     } catch (e) {
@@ -361,7 +361,11 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
 
   // --- Helper WhatsApp launcher to contact Admin ---
   Future<void> _contactAdmin() async {
-    final uri = Uri.parse('https://wa.me/$_fallbackAdminWa');
+    String cleanPhone = _fallbackAdminWa.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62${cleanPhone.substring(1)}';
+    }
+    final uri = Uri.parse('https://wa.me/$cleanPhone');
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);

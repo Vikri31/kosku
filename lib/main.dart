@@ -30,6 +30,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('Background FCM message received: ${message.messageId}');
 }
 
+/// Fungsi untuk mencetak FCM Token ke Debug Console
+Future<void> getFcmToken() async {
+  try {
+    String? token = await FirebaseMessaging.instance.getToken();
+    debugPrint('\n================ FCM TOKEN ================');
+    debugPrint(token ?? 'FCM Token tidak ditemukan / null');
+    debugPrint('===========================================\n');
+  } catch (e) {
+    debugPrint('Gagal mendapatkan FCM Token: $e');
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -39,6 +51,9 @@ Future<void> main() async {
     );
     // Daftarkan background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    
+    // Ambil dan cetak FCM Token untuk kebutuhan debugging/testing
+    await getFcmToken();
   } catch (e) {
     debugPrint('Gagal inisialisasi Firebase: $e');
   }
@@ -134,6 +149,7 @@ class _AuthGateState extends State<AuthGate> {
   Session? _currentSession;
   String? _currentUserId;
   String? _listenedUserId;
+  String? _lastShownNotifId; // Melacak ID notifikasi terakhir yang sudah ditampilkan
   bool _isLoading = true;
   Future<String?>? _roleFuture;
   StreamSubscription<AuthState>? _authSubscription;
@@ -190,18 +206,22 @@ class _AuthGateState extends State<AuthGate> {
   void _setupNotificationRealtimeListener(String userId) {
     if (_listenedUserId == userId && _notificationSubscription != null) return;
     _listenedUserId = userId;
+    _lastShownNotifId = null; // Reset tracker saat listener baru dipasang
     _notificationSubscription?.cancel();
-    _notificationSubscription = Supabase.instance.client
-        .from('notifikasi')
-        .stream(primaryKey: ['id_notifikasi'])
-        .eq('id_user', userId)
+    _notificationSubscription = NotificationService.streamNotifications(userId)
         .listen((List<Map<String, dynamic>> notifs) {
           if (!mounted) return;
           if (notifs.isNotEmpty) {
             final latestNotif = notifs.first;
+            final String? notifId = latestNotif['id_notifikasi']?.toString();
             final bool isRead = latestNotif['status_dibaca'] ?? false;
             final createdAtStr = latestNotif['created_at'];
-            if (!isRead && createdAtStr != null) {
+
+            // Skip jika notifikasi ini sudah pernah ditampilkan atau sudah dibaca
+            if (isRead || notifId == null) return;
+            if (_lastShownNotifId == notifId) return;
+
+            if (createdAtStr != null) {
               final createdAt = DateTime.tryParse(createdAtStr);
               if (createdAt != null) {
                 // Membandingkan dengan konversi UTC agar terhindar dari perbedaan zona waktu lokal device (WIB/WITA/WIT)
@@ -210,7 +230,10 @@ class _AuthGateState extends State<AuthGate> {
                     .difference(createdAt.toUtc())
                     .inSeconds
                     .abs();
-                if (diffInSeconds < 15) {
+                if (diffInSeconds < 300) { // Toleransi desinkronisasi jam ditingkatkan menjadi 5 menit (300 detik)
+                  // Tandai notifikasi ini sebagai sudah ditampilkan
+                  _lastShownNotifId = notifId;
+
                   // Tampilkan snackbar in-app sebagai popup notifikasi
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

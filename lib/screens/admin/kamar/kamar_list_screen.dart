@@ -236,61 +236,78 @@ class _KamarListScreenState extends State<KamarListScreen> {
 
           // --- GRID LIST OF ROOMS ---
           Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: stream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: primaryColor));
-                }
+            child: RefreshIndicator(
+              onRefresh: () async {
+                setState(() {});
+              },
+              color: primaryColor,
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: stream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: primaryColor));
+                  }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Gagal memuat data: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  );
-                }
-
-                final rooms = snapshot.data ?? [];
-
-                // Filter berdasarkan status chip
-                var filteredRooms = rooms.where((room) {
-                  if (_selectedFilter == 'Semua') return true;
-                  return room['status_kamar'] == _selectedFilter;
-                }).toList();
-
-                // Filter berdasarkan search query (nomor atau nama kamar)
-                if (_searchQuery.isNotEmpty) {
-                  filteredRooms = filteredRooms.where((room) {
-                    final nomorKamar = (room['nomor_kamar'] ?? '').toString().toLowerCase();
-                    final namaKamar = (room['nama_kamar'] ?? '').toString().toLowerCase();
-                    return nomorKamar.contains(_searchQuery) || namaKamar.contains(_searchQuery);
-                  }).toList();
-                }
-
-                if (filteredRooms.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  if (snapshot.hasError) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        Icon(Icons.search_off_rounded, size: 48, color: Colors.grey[400]),
-                        const SizedBox(height: 12),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Kamar "$_searchQuery" tidak ditemukan.'
-                              : 'Tidak ada kamar dalam kategori ini.',
-                          style: const TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                        Center(
+                          child: Text(
+                            'Gagal memuat data: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
                         ),
                       ],
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                return GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  physics: const BouncingScrollPhysics(),
+                  final rooms = snapshot.data ?? [];
+
+                  // Filter berdasarkan status chip
+                  var filteredRooms = rooms.where((room) {
+                    if (_selectedFilter == 'Semua') return true;
+                    return room['status_kamar'] == _selectedFilter;
+                  }).toList();
+
+                  // Filter berdasarkan search query (nomor atau nama kamar)
+                  if (_searchQuery.isNotEmpty) {
+                    filteredRooms = filteredRooms.where((room) {
+                      final nomorKamar = (room['nomor_kamar'] ?? '').toString().toLowerCase();
+                      final namaKamar = (room['nama_kamar'] ?? '').toString().toLowerCase();
+                      return nomorKamar.contains(_searchQuery) || namaKamar.contains(_searchQuery);
+                    }).toList();
+                  }
+
+                  if (filteredRooms.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_off_rounded, size: 48, color: Colors.grey[400]),
+                              const SizedBox(height: 12),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'Kamar "$_searchQuery" tidak ditemukan.'
+                                    : 'Tidak ada kamar dalam kategori ini.',
+                                style: const TextStyle(color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 16,
@@ -455,6 +472,7 @@ class _KamarListScreenState extends State<KamarListScreen> {
               },
             ),
           ),
+        ),
         ],
       ),
       floatingActionButton: FloatingActionButton(

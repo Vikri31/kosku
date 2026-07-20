@@ -34,13 +34,13 @@ class NotificationService {
             deviceType = 'windows';
           }
 
-          // Simpan atau update token di tabel 'user_tokens'
+          // Simpan atau update token di tabel 'user_tokens' berdasarkan konflik fcm_token
           await _client.from('user_tokens').upsert({
             'id_user': currentUser.id,
             'fcm_token': token,
             'device_type': deviceType,
             'updated_at': DateTime.now().toIso8601String(),
-          });
+          }, onConflict: 'fcm_token');
           debugPrint('FCM Token berhasil disimpan ke Supabase: $token');
         } else {
           debugPrint('FCM Token bernilai null.');

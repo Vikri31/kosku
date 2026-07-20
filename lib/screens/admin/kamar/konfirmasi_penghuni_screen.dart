@@ -260,7 +260,7 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
             idUser: idAdmin,
             judul: 'Penghuni Baru Bergabung! 🏠',
             pesan: '$nama telah berhasil bergabung ke Kamar $roomNo.',
-            kategori: 'penyewa_join',
+            kategori: 'admin',
           );
         }
       } catch (e) {

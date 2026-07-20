@@ -329,6 +329,7 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
     final String methodStr = _pemasukanData?['metode_bayar'] ?? '-';
     final String invoiceNum = _invoiceData!['nomor_invoice'] ?? '-';
     final String dueDateStr = _invoiceData!['tanggal_jatuh_tempo'] ?? '';
+    final String? buktiUrl = _invoiceData!['bukti_transfer_url'];
 
     bool isOverdue = false;
     if (status.toLowerCase() != 'lunas' && dueDateStr.isNotEmpty) {
@@ -409,6 +410,15 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
                     _DetailRow(label: 'Tanggal Bayar', value: _formatDetailDate(dateStr)),
                     _DetailRow(label: 'Metode Pembayaran', value: methodStr),
                     _DetailRow(
+                      label: 'Bukti Transfer',
+                      value: buktiUrl != null && buktiUrl.isNotEmpty
+                          ? 'Tersedia (Transfer)'
+                          : 'Tidak Tersedia (Manual/Tunai)',
+                      valueColor: buktiUrl != null && buktiUrl.isNotEmpty
+                          ? Colors.green.shade700
+                          : Colors.grey.shade600,
+                    ),
+                    _DetailRow(
                       label: 'Nomor Invoice',
                       value: invoiceNum,
                       compactValue: true,
@@ -418,6 +428,27 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
                 ),
               ),
               const Spacer(),
+
+              // Lihat Bukti Transfer Button (Jika status LUNAS dan bukti tersedia)
+              if (isPaid && buktiUrl != null && buktiUrl.isNotEmpty) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _lihatBuktiTransfer(buktiUrl),
+                    icon: const Icon(Icons.image_search_outlined, size: 20),
+                    label: const Text('Lihat Bukti Transfer'),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 2,
+                      backgroundColor: const Color(0xFF00796B), // Teal
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // Generate Invoice Button & Sudah Dibayarkan Button
               if (status.toUpperCase() != 'LUNAS') ...[
@@ -478,6 +509,55 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _lihatBuktiTransfer(String url) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: const Text('Bukti Transfer', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                backgroundColor: primaryColor,
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator(color: primaryColor));
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('Gagal memuat bukti transfer', style: TextStyle(color: Colors.grey)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -544,12 +624,14 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final bool compactValue;
   final bool showDivider;
+  final Color? valueColor;
 
   const _DetailRow({
     required this.label,
     required this.value,
     this.compactValue = false,
     this.showDivider = true,
+    this.valueColor,
   });
 
   @override
@@ -569,7 +651,7 @@ class _DetailRow extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  color: compactValue ? Colors.grey.shade500 : Colors.black87,
+                  color: valueColor ?? (compactValue ? Colors.grey.shade500 : Colors.black87),
                   fontSize: compactValue ? 11 : 13,
                   fontWeight: FontWeight.bold,
                 ),

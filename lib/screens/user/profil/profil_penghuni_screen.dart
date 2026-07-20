@@ -705,6 +705,67 @@ class _ProfilPenghuniScreenState extends State<ProfilPenghuniScreen> {
   }
 
   Future<void> _handlePindahKost() async {
+    if (_idSewa == null || _idKamar == null) return;
+
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    // Tampilkan progress indicator dialog saat mengecek tagihan
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: _kPrimary),
+      ),
+    );
+
+    try {
+      final client = Supabase.instance.client;
+      
+      // Cek apakah ada tagihan yang belum lunas
+      final unpaidInvoices = await client
+          .from('invoice')
+          .select()
+          .eq('id_sewa', _idSewa!)
+          .neq('status_pembayaran', 'Lunas');
+
+      if (!mounted) return;
+      navigator.pop(); // Tutup progress dialog
+
+      if (unpaidInvoices.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Gagal Pindah Kos',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF3B30)),
+            ),
+            content: const Text(
+              'Anda tidak dapat pindah kos karena masih memiliki tagihan yang belum dilunasi. Harap lunasi semua tagihan terlebih dahulu.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK', style: TextStyle(color: _kPrimary, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      navigator.pop(); // Tutup progress dialog
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengecek status tagihan: $e'),
+          backgroundColor: const Color(0xFFFF3B30),
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {

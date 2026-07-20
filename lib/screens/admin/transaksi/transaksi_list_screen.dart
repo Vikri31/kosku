@@ -165,47 +165,63 @@ class _DaftarTransaksiScreenState extends State<DaftarTransaksiScreen> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: primaryColor))
-                    : _invoices.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                child: RefreshIndicator(
+                  onRefresh: _loadInvoices,
+                  color: primaryColor,
+                  child: _isLoading
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                            const Center(child: CircularProgressIndicator(color: primaryColor)),
+                          ],
+                        )
+                      : _invoices.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
                               children: [
-                                Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Belum ada data transaksi',
-                                  style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                                Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Belum ada data transaksi',
+                                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
-                            ),
-                          )
-                        : ListView.separated(
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: _invoices.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final item = _invoices[index];
-                              return _TransactionCard(
-                                item: item,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetailTransaksiScreen(
-                                        idInvoice: item['id_invoice'] as int,
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                              itemCount: _invoices.length,
+                              separatorBuilder: (context, index) => const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final item = _invoices[index];
+                                return _TransactionCard(
+                                  item: item,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => DetailTransaksiScreen(
+                                          idInvoice: item['id_invoice'] as int,
+                                        ),
                                       ),
-                                    ),
-                                  ).then((val) {
-                                    if (val == true) {
-                                      _loadInvoices();
-                                    }
-                                  });
-                                },
-                              );
-                            },
-                          ),
+                                    ).then((val) {
+                                      if (val == true) {
+                                        _loadInvoices();
+                                      }
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                ),
               ),
             ],
           ),
@@ -393,9 +409,38 @@ class _TransactionCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _formatShortDate(dateStr),
-                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  Row(
+                    children: [
+                      Text(
+                        _formatShortDate(dateStr),
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                      if (item['bukti_transfer_url'] != null &&
+                          item['bukti_transfer_url'].toString().isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0F2F1), // Light teal background
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.image_outlined, size: 10, color: Color(0xFF00796B)),
+                              SizedBox(width: 3),
+                              Text(
+                                'BUKTI',
+                                style: TextStyle(
+                                  color: Color(0xFF00796B),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   Text(
                     _formatRupiah(amount),

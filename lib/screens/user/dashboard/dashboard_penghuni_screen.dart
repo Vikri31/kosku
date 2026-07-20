@@ -478,8 +478,12 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       body: Column(
         children: [
           Expanded(
-            child: CustomScrollView(
-              slivers: [
+            child: RefreshIndicator(
+              onRefresh: _fetchDashboardData,
+              color: _kPrimary,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
                 // ── Header Hijau ───────────────────────────────────────────
                 SliverToBoxAdapter(child: _buildHeader()),
                 // ── Konten ────────────────────────────────────────────────
@@ -500,6 +504,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
               ],
             ),
           ),
+        ),
           const PenghuniBottomNav(currentIndex: 0),
         ],
       ),
@@ -904,7 +909,11 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
                   );
                   return;
                 }
-                final uri = Uri.parse('https://wa.me/$_noPemilik');
+                String cleanPhone = _noPemilik.replaceAll(RegExp(r'[^0-9]'), '');
+                if (cleanPhone.startsWith('0')) {
+                  cleanPhone = '62${cleanPhone.substring(1)}';
+                }
+                final uri = Uri.parse('https://wa.me/$cleanPhone');
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
