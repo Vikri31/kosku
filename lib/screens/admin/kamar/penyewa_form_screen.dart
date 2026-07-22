@@ -398,24 +398,6 @@ class _PenyewaFormScreenState extends State<PenyewaFormScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ── Durasi Sewa (bulan) ──
-                      _label('Durasi Sewa'),
-                      DropdownButtonFormField<int>(
-                        initialValue: _durasibulan,
-                        items: List.generate(12, (i) {
-                          final val = i + 1;
-                          return DropdownMenuItem(
-                            value: val,
-                            child: Text('$val Bulan'),
-                          );
-                        }),
-                        decoration: _dropdownDecoration(),
-                        onChanged: (v) {
-                          if (v != null) setState(() => _durasibulan = v);
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
                       // ── Pilih Kamar ──
                       _label('Pilih Kamar'),
                       _isLoadingKamars

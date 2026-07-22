@@ -5,19 +5,17 @@ import '../../../services/notification_service.dart';
 class KonfirmasiPenghuniScreen extends StatefulWidget {
   final int idRequest;
 
-  const KonfirmasiPenghuniScreen({
-    super.key,
-    required this.idRequest,
-  });
+  const KonfirmasiPenghuniScreen({super.key, required this.idRequest});
 
   @override
-  State<KonfirmasiPenghuniScreen> createState() => _KonfirmasiPenghuniScreenState();
+  State<KonfirmasiPenghuniScreen> createState() =>
+      _KonfirmasiPenghuniScreenState();
 }
 
 class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
   // Theme colors
   static const Color primaryColor = Color(0xFF004D40); // Teal
-  static const Color accentColor = Color(0xFFFFA834);  // Orange
+  static const Color accentColor = Color(0xFFFFA834); // Orange
 
   bool _isLoading = true;
   bool _isProcessing = false;
@@ -38,20 +36,36 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       final dateUtc = DateTime.parse(dateStr);
       final date = dateUtc.toLocal();
       final months = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
       ];
       final days = [
-        'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+        'Senin',
+        'Selasa',
+        'Rabu',
+        'Kamis',
+        'Jumat',
+        'Sabtu',
+        'Minggu',
       ];
       final dayName = days[date.weekday - 1];
       final monthName = months[date.month - 1];
-      
+
       // Jika data tanggal tidak memiliki komponen waktu (jam, menit, detik = 0 dalam UTC), cukup tampilkan tanggal saja
       if (dateUtc.hour == 0 && dateUtc.minute == 0 && dateUtc.second == 0) {
         return '$dayName, ${date.day} $monthName ${date.year}';
       }
-      
+
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
       return '$dayName, ${date.day} $monthName ${date.year} pukul $hour:$minute';
@@ -67,8 +81,18 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       final date = DateTime.parse(tanggalPengajuanStr).toLocal();
       final estimatedDate = date.add(const Duration(days: 3));
       final months = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
       ];
       return '${estimatedDate.day} ${months[estimatedDate.month - 1]} ${estimatedDate.year}';
     } catch (e) {
@@ -135,7 +159,6 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           .eq('id_user', idUser)
           .maybeSingle();
       _detailPenyewaData = detailPenyewa;
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,23 +179,64 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
   Future<void> _setujuiPengajuan() async {
     if (_requestData == null) return;
 
+    final String? nik = _detailPenyewaData?['nik'];
+    if (nik == null || nik.isEmpty) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                SizedBox(width: 8),
+                Text(
+                  'Profil Belum Lengkap',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Calon penghuni ini belum melengkapi data profil (NIK, KTP, dll.) di aplikasinya. '
+              'Harap minta calon penghuni untuk melengkapi profilnya terlebih dahulu sebelum Anda menyetujui pengajuan ini.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isProcessing = true);
     try {
       final client = Supabase.instance.client;
       final idUser = _requestData!['id_user'];
       final idKamar = _requestData!['id_kamar'];
 
-      // Fallbacks if profile details do not exist
-      final String nik = _detailPenyewaData?['nik'] ?? 'NIK-AUTO-${DateTime.now().millisecondsSinceEpoch}';
       final String tempatLahir = _detailPenyewaData?['tempat_lahir'] ?? '-';
-      final String tanggalLahir = _detailPenyewaData?['tanggal_lahir'] ?? '2000-01-01';
+      final String tanggalLahir =
+          _detailPenyewaData?['tanggal_lahir'] ?? '2000-01-01';
       final String jenisKelamin = _detailPenyewaData?['jenis_kelamin'] ?? '-';
       final String alamatKtp = _detailPenyewaData?['alamat_ktp'] ?? '-';
       final String pekerjaan = _detailPenyewaData?['pekerjaan'] ?? '-';
       final String? fotoKtpUrl = _detailPenyewaData?['foto_ktp_url'];
       final String? fotoProfilUrl = _detailPenyewaData?['foto_profil_url'];
 
-      final String nama = _detailPenyewaData?['nama_lengkap'] ?? 'Penghuni Baru';
+      final String nama =
+          _detailPenyewaData?['nama_lengkap'] ?? 'Penghuni Baru';
       final String noWa = _detailPenyewaData?['nomor_whatsapp'] ?? '-';
 
       // 1. Ensure detail_penyewa exists
@@ -209,11 +273,7 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       if (existingPenyewa == null) {
         final newPenyewa = await client
             .from('penyewa')
-            .insert({
-              'nik': nik,
-              'nomor_whatsapp': noWa,
-              'nama_lengkap': nama,
-            })
+            .insert({'nik': nik, 'nomor_whatsapp': noWa, 'nama_lengkap': nama})
             .select()
             .single();
         idPenyewa = newPenyewa['id_penyewa'];
@@ -260,7 +320,7 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
             idUser: idAdmin,
             judul: 'Penghuni Baru Bergabung! 🏠',
             pesan: '$nama telah berhasil bergabung ke Kamar $roomNo.',
-            kategori: 'penyewa_join',
+            kategori: 'admin',
           );
         }
       } catch (e) {
@@ -366,7 +426,10 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -426,7 +489,9 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                             return const SizedBox(
                               height: 200,
                               child: Center(
-                                child: CircularProgressIndicator(color: primaryColor),
+                                child: CircularProgressIndicator(
+                                  color: primaryColor,
+                                ),
                               ),
                             );
                           },
@@ -437,9 +502,16 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.broken_image, size: 48, color: Colors.redAccent),
+                                    Icon(
+                                      Icons.broken_image,
+                                      size: 48,
+                                      color: Colors.redAccent,
+                                    ),
                                     SizedBox(height: 8),
-                                    Text('Gagal memuat gambar KTP', style: TextStyle(color: Colors.redAccent)),
+                                    Text(
+                                      'Gagal memuat gambar KTP',
+                                      style: TextStyle(color: Colors.redAccent),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -468,7 +540,11 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
       appBar: AppBar(
         title: const Text(
           'Konfirmasi Penghuni',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
         backgroundColor: primaryColor,
@@ -479,14 +555,20 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 24.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // --- BADGE STATUS ---
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: accentColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
@@ -514,7 +596,9 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                   // --- CARD PROFIL CALON PENGHUNI ---
                   Card(
                     color: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 2,
                     shadowColor: Colors.black.withValues(alpha: 0.08),
                     child: Padding(
@@ -528,18 +612,25 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: const Color(0xFFE8F5F2),
-                              border: Border.all(color: primaryColor.withValues(alpha: 0.3), width: 3),
+                              border: Border.all(
+                                color: primaryColor.withValues(alpha: 0.3),
+                                width: 3,
+                              ),
                             ),
                             child: ClipOval(
-                              child: (profilePhoto != null && profilePhoto.isNotEmpty)
+                              child:
+                                  (profilePhoto != null &&
+                                      profilePhoto.isNotEmpty)
                                   ? Image.network(
                                       profilePhoto,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Icon(
-                                        Icons.person,
-                                        size: 45,
-                                        color: primaryColor,
-                                      ),
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.person,
+                                                size: 45,
+                                                color: primaryColor,
+                                              ),
                                     )
                                   : const Icon(
                                       Icons.person,
@@ -549,7 +640,7 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // Tenant Details Title
                           const Text(
                             'Data Diri Calon Penghuni',
@@ -567,7 +658,8 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                           _buildProfileRow(
                             Icons.person_outline,
                             'Nama',
-                            _detailPenyewaData?['nama_lengkap'] ?? 'Penghuni Baru',
+                            _detailPenyewaData?['nama_lengkap'] ??
+                                'Penghuni Baru',
                           ),
                           const SizedBox(height: 14),
                           _buildProfileRow(
@@ -591,19 +683,25 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                           _buildProfileRow(
                             Icons.meeting_room_outlined,
                             'Nama Kamar',
-                            _kamarData != null ? 'Kamar ${_kamarData!['nomor_kamar']}' : '-',
+                            _kamarData != null
+                                ? 'Kamar ${_kamarData!['nomor_kamar']}'
+                                : '-',
                           ),
                           const SizedBox(height: 14),
                           _buildProfileRow(
                             Icons.monetization_on_outlined,
                             'Harga Sewa',
-                            _kamarData != null ? '${_formatRupiah(_kamarData!['harga_sewa_dasar'])} / Bulan' : '-',
+                            _kamarData != null
+                                ? '${_formatRupiah(_kamarData!['harga_sewa_dasar'])} / Bulan'
+                                : '-',
                           ),
                           const SizedBox(height: 14),
                           _buildProfileRow(
                             Icons.calendar_month_outlined,
                             'Perkiraan Tanggal Masuk',
-                            _getPerkiraanTanggalMasuk(_requestData?['tanggal_pengajuan']),
+                            _getPerkiraanTanggalMasuk(
+                              _requestData?['tanggal_pengajuan'],
+                            ),
                           ),
                         ],
                       ),
@@ -614,11 +712,16 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                   // --- CARD DOKUMEN IDENTITAS ---
                   Card(
                     color: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 2,
                     shadowColor: Colors.black.withValues(alpha: 0.08),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 16.0,
+                      ),
                       child: Row(
                         children: [
                           Container(
@@ -648,7 +751,9 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _getFileName(_detailPenyewaData?['foto_ktp_url']),
+                                  _getFileName(
+                                    _detailPenyewaData?['foto_ktp_url'],
+                                  ),
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
@@ -668,7 +773,10 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               elevation: 0,
                             ),
                             onPressed: _lihatFotoKtp,
@@ -689,15 +797,25 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                   // --- CATATAN INFORMASI WAKTU ---
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: primaryColor.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: primaryColor.withValues(alpha: 0.15), width: 1),
+                      border: Border.all(
+                        color: primaryColor.withValues(alpha: 0.15),
+                        width: 1,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, color: primaryColor, size: 20),
+                        const Icon(
+                          Icons.info_outline,
+                          color: primaryColor,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -716,7 +834,9 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
 
                   // --- ACTION BUTTONS ---
                   if (_isProcessing)
-                    const Center(child: CircularProgressIndicator(color: primaryColor))
+                    const Center(
+                      child: CircularProgressIndicator(color: primaryColor),
+                    )
                   else
                     Row(
                       children: [
@@ -724,7 +844,10 @@ class _KonfirmasiPenghuniScreenState extends State<KonfirmasiPenghuniScreen> {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red, width: 1.5),
+                              side: const BorderSide(
+                                color: Colors.red,
+                                width: 1.5,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),

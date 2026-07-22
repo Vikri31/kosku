@@ -231,11 +231,13 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
       final bytes = await file.readAsBytes();
 
       // Upload file to the 'foto_kamar' bucket (or fallback bucket)
-      await client.storage.from('foto_kamar').uploadBinary(
-        uploadPath,
-        bytes,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
+      await client.storage
+          .from('foto_kamar')
+          .uploadBinary(
+            uploadPath,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
       // Get public URL
       final publicUrl = client.storage
           .from('foto_kamar')
@@ -302,6 +304,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
           'foto_profil_url': profileUrl,
           'nama_lengkap': namaLengkap,
           'nomor_whatsapp': nomorWhatsapp,
+          'email': _emailController.text.trim(),
         };
         await client.from('detail_penyewa').insert(payloadDetail);
 
@@ -339,6 +342,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
           'foto_profil_url': profileUrl,
           'nama_lengkap': namaLengkap,
           'nomor_whatsapp': nomorWhatsapp,
+          'email': _emailController.text.trim(),
         };
         await client.from('detail_penyewa').upsert(payloadDetail);
 
@@ -479,13 +483,24 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                             backgroundColor: Colors.transparent,
                             backgroundImage: _profileImage != null
                                 ? (kIsWeb
-                                    ? NetworkImage(_profileImage!.path)
-                                    : FileImage(io.File(_profileImage!.path))) as ImageProvider
-                                : (_existingProfileUrl != null && _existingProfileUrl!.isNotEmpty
-                                    ? NetworkImage(_existingProfileUrl!)
-                                    : null),
-                            child: _profileImage == null && (_existingProfileUrl == null || _existingProfileUrl!.isEmpty)
-                                ? const Icon(Icons.person, size: 54, color: _kPrimary)
+                                          ? NetworkImage(_profileImage!.path)
+                                          : FileImage(
+                                              io.File(_profileImage!.path),
+                                            ))
+                                      as ImageProvider
+                                : (_existingProfileUrl != null &&
+                                          _existingProfileUrl!.isNotEmpty
+                                      ? NetworkImage(_existingProfileUrl!)
+                                      : null),
+                            child:
+                                _profileImage == null &&
+                                    (_existingProfileUrl == null ||
+                                        _existingProfileUrl!.isEmpty)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 54,
+                                    color: _kPrimary,
+                                  )
                                 : null,
                           ),
                         ),
@@ -541,7 +556,7 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                 // No Handphone
+                // No Handphone
                 _buildTextField(
                   controller: _phoneController,
                   label: 'Nomor Handphone (WA)',
@@ -574,7 +589,9 @@ class _LengkapiDataDiriScreenState extends State<LengkapiDataDiriScreen> {
                 _buildTextField(
                   controller: _nikController,
                   label: 'NIK (Nomor Induk Kependudukan)',
-                  hint: _nikController.text.isEmpty ? 'Belum diisi (Masukkan 16 digit NIK)' : 'Masukkan 16 digit NIK',
+                  hint: _nikController.text.isEmpty
+                      ? 'Belum diisi (Masukkan 16 digit NIK)'
+                      : 'Masukkan 16 digit NIK',
                   icon: Icons.badge_outlined,
                   keyboardType: TextInputType.number,
                   enabled: true,
