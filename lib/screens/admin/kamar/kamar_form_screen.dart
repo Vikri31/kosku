@@ -315,7 +315,8 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
           await Supabase.instance.client.from('profil_admin').insert({
             'id_admin': currentUserId,
             'nama_lengkap': namaDefault,
-            'nama_kost': 'Kos Saya', // nilai sementara, bisa diubah di halaman Profil
+            'nama_kost':
+                'Kos Saya', // nilai sementara, bisa diubah di halaman Profil
           });
         }
       }
@@ -332,6 +333,7 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
       // If editing, include the Primary Key to perform an UPDATE upsert
       if (widget.roomData != null) {
         payload['id_kamar'] = widget.roomData!['id_kamar'];
+        payload['kode_kamar'] = widget.roomData!['kode_kamar'];
       } else {
         // Only generate code for a new room
         payload['kode_kamar'] = _generateKodeKamar();
@@ -525,52 +527,57 @@ class _KamarFormScreenState extends State<KamarFormScreen> {
                       const SizedBox(height: 20),
 
                       // Status Kamar
-                      const Text(
-                        'Status Kamar',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                      if (widget.roomData != null) ...[
+                        const Text(
+                          'Status Kamar',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: _statusKamar,
-                        items: ['Kosong', 'Terisi'].map((status) {
-                          return DropdownMenuItem<String>(
-                            value: status,
-                            child: Text(status),
-                          );
-                        }).toList(),
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: primaryColor,
-                              width: 1.5,
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          initialValue: _statusKamar,
+                          items: ['Kosong', 'Terisi', 'Perbaikan'].map((
+                            status,
+                          ) {
+                            return DropdownMenuItem<String>(
+                              value: status,
+                              child: Text(status),
+                            );
+                          }).toList(),
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 1.5,
+                              ),
                             ),
                           ),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _statusKamar = value;
+                              });
+                            }
+                          },
                         ),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _statusKamar = value;
-                            });
-                          }
-                        },
-                      ),
+                        const SizedBox(height: 20),
+                      ],
                     ],
                   ),
                 ),
