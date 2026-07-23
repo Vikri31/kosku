@@ -358,7 +358,7 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const InvoicePenghuniScreen(),
+                      builder: (_) => InvoicePenghuniScreen(invoice: widget.invoice),
                     ),
                   );
                 },
@@ -482,8 +482,8 @@ class _DetailTagihanScreenState extends State<DetailTagihanScreen> {
       ),
       child: Column(
         children: [
-          _InfoRow(label: 'Periode', value: _getBulanSewa(widget.invoice['tanggal_dibuat'])),
-          _InfoRow(label: 'Tanggal', value: _formatTanggal(widget.invoice['tanggal_dibuat'])),
+          _InfoRow(label: 'Periode Sewa', value: widget.invoice['periode_sewa'] ?? '-'),
+          _InfoRow(label: 'Tanggal Tagihan', value: _formatTanggal(widget.invoice['tanggal_dibuat'])),
           _InfoRow(label: 'Kamar', value: _nomorKamar),
           _InfoRow(label: 'Kos', value: _namaKos),
           _InfoRow(label: 'ID Transaksi', value: widget.invoice['nomor_invoice'] ?? '-'),

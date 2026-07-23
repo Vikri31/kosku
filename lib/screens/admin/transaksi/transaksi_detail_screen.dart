@@ -108,6 +108,9 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
       ];
+      if (date.hour == 0 && date.minute == 0) {
+        return '${date.day} ${months[date.month - 1]} ${date.year}';
+      }
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
       return '${date.day} ${months[date.month - 1]} ${date.year}, $hour:$minute';
@@ -407,7 +410,13 @@ class _DetailTransaksiScreenState extends State<DetailTransaksiScreen> {
                   children: [
                     _DetailRow(label: 'Nama Penyewa', value: tenantName),
                     _DetailRow(label: 'Kamar', value: 'Kamar $roomNum'),
-                    _DetailRow(label: 'Tanggal Bayar', value: _formatDetailDate(dateStr)),
+                    _DetailRow(label: 'Periode Sewa', value: _invoiceData!['periode_sewa'] ?? '-'),
+                    _DetailRow(label: 'Tanggal Dibuat', value: _formatDetailDate(dateStr)),
+                    if (isPaid)
+                      _DetailRow(
+                        label: 'Tanggal Bayar',
+                        value: _formatDetailDate(_pemasukanData?['tanggal_bayar']),
+                      ),
                     _DetailRow(label: 'Metode Pembayaran', value: methodStr),
                     _DetailRow(
                       label: 'Bukti Transfer',

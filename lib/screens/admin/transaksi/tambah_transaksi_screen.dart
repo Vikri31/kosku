@@ -28,6 +28,7 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
   Map<String, dynamic>? _selectedLease;
   DateTime _selectedDate = DateTime.now();
   bool _isPaid = true;
+  int _durasiBulan = 1;
 
   @override
   void initState() {
@@ -174,8 +175,33 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
       final invoiceNumber = 'INV-${_selectedDate.year}${_selectedDate.month.toString().padLeft(2, '0')}-$timestamp';
 
       final tanggalDibuatStr = _selectedDate.toIso8601String().split('T').first;
-      final tanggalJatuhTempoStr = _selectedDate.add(const Duration(days: 7)).toIso8601String().split('T').first;
       final statusPembayaran = _isPaid ? 'Lunas' : 'Belum Bayar';
+
+      // Hitung tanggal jatuh tempo: tanggal terpilih + N bulan
+      final tanggalJatuhTempoStr = DateTime(_selectedDate.year, _selectedDate.month + _durasiBulan, _selectedDate.day).toIso8601String().split('T').first;
+
+      // Hitung periode sewa secara dinamis berdasarkan durasi bulan
+      const List<String> monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      
+      final startPeriod = _selectedDate;
+      final endPeriod = DateTime(_selectedDate.year, _selectedDate.month + _durasiBulan - 1, _selectedDate.day);
+      
+      final startMonthStr = monthNames[startPeriod.month - 1];
+      final endMonthStr = monthNames[endPeriod.month - 1];
+      
+      final String periodeSewaStr;
+      if (_durasiBulan == 1) {
+        periodeSewaStr = '$startMonthStr ${startPeriod.year}';
+      } else {
+        if (startPeriod.year == endPeriod.year) {
+          periodeSewaStr = '$startMonthStr - $endMonthStr ${startPeriod.year}';
+        } else {
+          periodeSewaStr = '$startMonthStr ${startPeriod.year} - $endMonthStr ${endPeriod.year}';
+        }
+      }
 
       // 1. Insert to invoice table
       final insertedInvoice = await client
@@ -183,10 +209,12 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
           .insert({
             'id_sewa': idSewa,
             'nomor_invoice': invoiceNumber,
-            'tanggal_dibuat': tanggalDibuatStr,
-            'tanggal_jatuh_tempo': tanggalJatuhTempoStr,
+            'periode_sewa': periodeSewaStr,
+            'biaya_sewa_pokok': nominal,
             'total_tagihan': nominal,
             'status_pembayaran': statusPembayaran,
+            'tanggal_dibuat': tanggalDibuatStr,
+            'tanggal_jatuh_tempo': tanggalJatuhTempoStr,
           })
           .select()
           .single();
@@ -335,11 +363,39 @@ class _TambahTransaksiScreenState extends State<TambahTransaksiScreen> {
                                     _selectedLease = value;
                                     if (value != null && value['kamar'] != null) {
                                       final harga = value['kamar']['harga_sewa_dasar'] ?? 0;
-                                      _nominalController.text = harga.toString();
+                                      _nominalController.text = (harga * _durasiBulan).toString();
                                     }
                                   });
                                 },
                                 validator: (val) => val == null ? 'Harap pilih penyewa' : null,
+                              ),
+                            ),
+
+                            // Durasi Sewa (Bulan)
+                            _InputBlock(
+                              label: 'Durasi Sewa (Bulan)',
+                              child: DropdownButtonFormField<int>(
+                                initialValue: _durasiBulan,
+                                decoration: _inputDecoration(),
+                                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                                items: const [
+                                  DropdownMenuItem(value: 1, child: Text('1 Bulan', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 2, child: Text('2 Bulan', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 3, child: Text('3 Bulan', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 6, child: Text('6 Bulan', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 12, child: Text('12 Bulan', style: TextStyle(fontSize: 13))),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _durasiBulan = value;
+                                      if (_selectedLease != null && _selectedLease!['kamar'] != null) {
+                                        final harga = _selectedLease!['kamar']['harga_sewa_dasar'] ?? 0;
+                                        _nominalController.text = (harga * _durasiBulan).toString();
+                                      }
+                                    });
+                                  }
+                                },
                               ),
                             ),
 
