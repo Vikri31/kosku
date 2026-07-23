@@ -282,6 +282,7 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
       bool dekatJatuhTempoActive = false;
 
       Map<String, dynamic>? unpaidInvoice;
+      bool isAllPaid = false;
       if (invoices.isNotEmpty) {
         try {
           unpaidInvoice = invoices.firstWhere(
@@ -289,29 +290,37 @@ class _DashboardPenghuniScreenState extends State<DashboardPenghuniScreen> {
           );
         } catch (_) {
           unpaidInvoice = invoices.first;
+          isAllPaid = true;
         }
       }
 
       if (unpaidInvoice != null) {
-        nominalTagihanActive = _formatRupiah(unpaidInvoice['total_tagihan']);
+        nominalTagihanActive = isAllPaid 
+            ? 'Rp 0' 
+            : _formatRupiah(unpaidInvoice['total_tagihan']);
         final String rawStatus = unpaidInvoice['status_pembayaran'] ?? 'BELUM';
         final String jtRaw = unpaidInvoice['tanggal_jatuh_tempo'] ?? '';
         bool isOverdue = false;
         
         try {
           final jtDate = DateTime.parse(jtRaw);
+          // Jika sudah lunas semua, tanggal jatuh tempo berikutnya adalah 1 bulan ke depan dari tempo invoice terakhir
+          final nextCycleDate = isAllPaid 
+              ? DateTime(jtDate.year, jtDate.month + 1, jtDate.day)
+              : jtDate;
+
           jatuhTempoActive =
-              "${jtDate.day} ${_getNamaBulan(jtDate.month)} ${jtDate.year}";
+              "${nextCycleDate.day} ${_getNamaBulan(nextCycleDate.month)} ${nextCycleDate.year}";
           
           final today = DateTime.now();
           final todayZero = DateTime(today.year, today.month, today.day);
-          final diff = jtDate.difference(todayZero).inDays;
+          final diff = nextCycleDate.difference(todayZero).inDays;
           
           sisaHariActive = "$diff Hari";
-          if (diff <= 7 && diff >= 0) {
+          if (!isAllPaid && diff <= 7 && diff >= 0) {
             dekatJatuhTempoActive = true;
           }
-          if (diff < 0) {
+          if (!isAllPaid && diff < 0) {
             isOverdue = true;
           }
         } catch (_) {

@@ -113,6 +113,10 @@ class MyApp extends StatelessWidget {
           0xFF004D40,
         ), // Diselaraskan dengan warna dasar gelap kehijauan
         scaffoldBackgroundColor: Colors.white,
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          dismissDirection: DismissDirection.horizontal,
+        ),
       ),
       // Rute awal diarahkan ke '/' yang mengaktifkan pengecekan session di AuthGate
       initialRoute: '/',

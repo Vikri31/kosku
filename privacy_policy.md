@@ -116,7 +116,7 @@ The Company may use Personal Data for the following purposes:
 
 We may share Your Personal Data in the following situations:
 
-- __With Service Providers:__ We may share Your Personal Data with Service Providers to monitor and analyze the use of our Service,  to contact You.
+- __With Service Providers:__ We may share Your Personal Data with Service Providers to monitor and analyze the use of our Service, to contact You. We use third-party infrastructure and service providers to facilitate our Service, including **Supabase** (for cloud database and file storage) and **Firebase Cloud Messaging** (for delivering push notifications).
 - __For business transfers:__ We may share or transfer Your Personal Data in connection with, or during negotiations of, any merger, sale of Company assets, financing, or acquisition of all or a portion of Our business to another company.
 - __With Affiliates:__ We may share Your Personal Data with Our affiliates, in which case we will require those affiliates to honor this Privacy Policy. Affiliates include Our parent company and any other subsidiaries, joint venture partners or other companies that We control or that are under common control with Us.
 - __With business partners:__ We may share Your Personal Data with Our business partners to offer You certain products, services or promotions.

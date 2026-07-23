@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'kamar_form_screen.dart';
-import 'kamar_detail_screen.dart';
+import 'detail_kamar_screen.dart';
 
 class KamarListScreen extends StatefulWidget {
   const KamarListScreen({super.key});
